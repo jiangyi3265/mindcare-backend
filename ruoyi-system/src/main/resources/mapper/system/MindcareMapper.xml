@@ -71,6 +71,10 @@
         select <include refid="contentColumns"/> from mc_content where content_type = #{contentType} and content_key = #{contentKey} limit 1
     </select>
 
+    <select id="lockActivityContentByKey" resultType="long">
+        select content_id from mc_content where content_type = 'activity' and content_key = #{contentKey} for update
+    </select>
+
     <insert id="insertContent" parameterType="MindcareContent" useGeneratedKeys="true" keyProperty="contentId">
         insert into mc_content (content_key, content_type, title, category, summary, payload_json, status, sort_order, create_by, create_time)
         values (#{contentKey}, #{contentType}, #{title}, #{category}, #{summary}, #{payloadJson}, #{status}, #{sortOrder}, #{createBy}, sysdate())

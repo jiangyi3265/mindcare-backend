@@ -13,6 +13,7 @@ public interface MindcareMapper
     List<MindcareContent> selectPublishedContentList();
     MindcareContent selectContentById(Long contentId);
     MindcareContent selectContentByKey(@Param("contentType") String contentType, @Param("contentKey") String contentKey);
+    Long lockActivityContentByKey(@Param("contentKey") String contentKey);
     int insertContent(MindcareContent content);
     int updateContent(MindcareContent content);
     int deleteContentByIds(Long[] contentIds);

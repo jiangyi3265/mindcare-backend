@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
@@ -191,7 +192,7 @@ public class MindcareServiceImpl implements IMindcareService
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public MindcareRecord saveClientRecord(String clientId, String token, MindcareRecord record)
     {
         authenticateClient(clientId, token);
@@ -204,6 +205,11 @@ public class MindcareServiceImpl implements IMindcareService
             throw new ServiceException("记录类型不正确");
         }
         record.setClientId(clientId);
+        if ("activity".equals(record.getRecordType()) && StringUtils.isNotEmpty(record.getContentKey()))
+        {
+            // Serialize signups for one activity before checking its remaining capacity.
+            mapper.lockActivityContentByKey(record.getContentKey());
+        }
         MindcareRecord existing = mapper.selectClientRecordByKey(clientId, record.getRecordKey());
         if (existing != null && !record.getRecordType().equals(existing.getRecordType()))
         {
