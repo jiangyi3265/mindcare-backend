@@ -1,0 +1,79 @@
+# Maven / Java build output
+target/
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Gradle (kept for IDE/tool interoperability)
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+!*/build/*.java
+!*/build/*.html
+!*/build/*.xml
+
+# Runtime data and logs
+logs/
+**/logs/
+*.log
+*.pid
+hs_err_pid*
+uploads/
+
+# Environment-specific and sensitive configuration
+.env
+.env.*
+!.env.example
+**/application-local.yml
+**/application-local.yaml
+**/application-local.properties
+**/application-*.local.yml
+**/application-*.local.yaml
+**/application-*.local.properties
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+
+# IDE and editor files
+.idea/
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+.apt_generated/
+.springBeans
+*.iws
+*.iml
+*.ipr
+*.suo
+*.swp
+*.tmp
+*~
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Upstream repository-only metadata
+.github/FUNDING.yml
+
+# Upstream local setup manuals may contain example credentials
+/doc/*.docx
+
+# Tool backups
+*.xml.versionsBackup
+rebel.xml
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/

@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.MindcareMapper">
+
+    <resultMap id="ContentResult" type="MindcareContent">
+        <id property="contentId" column="content_id"/>
+        <result property="contentKey" column="content_key"/>
+        <result property="contentType" column="content_type"/>
+        <result property="title" column="title"/>
+        <result property="category" column="category"/>
+        <result property="summary" column="summary"/>
+        <result property="payloadJson" column="payload_json"/>
+        <result property="status" column="status"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <resultMap id="RecordResult" type="MindcareRecord">
+        <id property="recordId" column="record_id"/>
+        <result property="recordKey" column="record_key"/>
+        <result property="clientId" column="client_id"/>
+        <result property="recordType" column="record_type"/>
+        <result property="contentKey" column="content_key"/>
+        <result property="title" column="title"/>
+        <result property="contactName" column="contact_name"/>
+        <result property="contactPhone" column="contact_phone"/>
+        <result property="status" column="status"/>
+        <result property="score" column="score"/>
+        <result property="progress" column="progress"/>
+        <result property="dataJson" column="data_json"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <resultMap id="ClientResult" type="MindcareClient">
+        <id property="clientId" column="client_id"/>
+        <result property="tokenHash" column="token_hash"/>
+        <result property="nickname" column="nickname"/>
+        <result property="phone" column="phone"/>
+        <result property="lastSeenTime" column="last_seen_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="contentColumns">content_id, content_key, content_type, title, category, summary, cast(payload_json as char) payload_json, status, sort_order, create_by, create_time, update_by, update_time</sql>
+    <sql id="recordColumns">record_id, record_key, client_id, record_type, content_key, title, contact_name, contact_phone, status, score, progress, cast(data_json as char) data_json, create_time, update_by, update_time</sql>
+
+    <select id="selectContentList" parameterType="MindcareContent" resultMap="ContentResult">
+        select <include refid="contentColumns"/> from mc_content
+        <where>
+            <if test="contentType != null and contentType != ''">and content_type = #{contentType}</if>
+            <if test="title != null and title != ''">and title like concat('%', #{title}, '%')</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by sort_order, content_id
+    </select>
+
+    <select id="selectPublishedContentList" resultMap="ContentResult">
+        select <include refid="contentColumns"/> from mc_content where status = '0' order by content_type, sort_order, content_id
+    </select>
+
+    <select id="selectContentById" parameterType="Long" resultMap="ContentResult">
+        select <include refid="contentColumns"/> from mc_content where content_id = #{contentId}
+    </select>
+
+    <select id="selectContentByKey" resultMap="ContentResult">
+        select <include refid="contentColumns"/> from mc_content where content_type = #{contentType} and content_key = #{contentKey} limit 1
+    </select>
+
+    <insert id="insertContent" parameterType="MindcareContent" useGeneratedKeys="true" keyProperty="contentId">
+        insert into mc_content (content_key, content_type, title, category, summary, payload_json, status, sort_order, create_by, create_time)
+        values (#{contentKey}, #{contentType}, #{title}, #{category}, #{summary}, #{payloadJson}, #{status}, #{sortOrder}, #{createBy}, sysdate())
+    </insert>
+
+    <update id="updateContent" parameterType="MindcareContent">
+        update mc_content set content_key=#{contentKey}, content_type=#{contentType}, title=#{title}, category=#{category}, summary=#{summary},
+        payload_json=#{payloadJson}, status=#{status}, sort_order=#{sortOrder}, update_by=#{updateBy}, update_time=sysdate()
+        where content_id=#{contentId}
+    </update>
+
+    <delete id="deleteContentByIds" parameterType="Long">
+        delete from mc_content where content_id in
+        <foreach collection="array" item="contentId" open="(" separator="," close=")">#{contentId}</foreach>
+    </delete>
+
+    <select id="selectRecordList" parameterType="MindcareRecord" resultMap="RecordResult">
+        select <include refid="recordColumns"/> from mc_record
+        <where>
+            <if test="recordType != null and recordType != ''">and record_type = #{recordType}</if>
+            <if test="clientId != null and clientId != ''">and client_id = #{clientId}</if>
+            <if test="title != null and title != ''">and title like concat('%', #{title}, '%')</if>
+            <if test="contactPhone != null and contactPhone != ''">and contact_phone like concat('%', #{contactPhone}, '%')</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by update_time desc, record_id desc
+    </select>
+
+    <select id="selectClientRecordList" parameterType="String" resultMap="RecordResult">
+        select <include refid="recordColumns"/> from mc_record where client_id = #{clientId} order by update_time desc, record_id desc
+    </select>
+
+    <select id="selectRecordById" parameterType="Long" resultMap="RecordResult">
+        select <include refid="recordColumns"/> from mc_record where record_id = #{recordId}
+    </select>
+
+    <select id="selectClientRecordByKey" resultMap="RecordResult">
+        select <include refid="recordColumns"/> from mc_record where client_id=#{clientId} and record_key=#{recordKey} limit 1
+    </select>
+
+    <insert id="upsertRecord" parameterType="MindcareRecord" useGeneratedKeys="true" keyProperty="recordId">
+        insert into mc_record (record_key, client_id, record_type, content_key, title, contact_name, contact_phone, status, score, progress, data_json, create_time, update_time)
+        values (#{recordKey}, #{clientId}, #{recordType}, #{contentKey}, #{title}, #{contactName}, #{contactPhone}, #{status}, #{score}, #{progress}, #{dataJson}, sysdate(), sysdate())
+        on duplicate key update record_id=last_insert_id(record_id), title=values(title), contact_name=values(contact_name),
+        contact_phone=values(contact_phone), status=values(status), score=values(score), progress=values(progress), data_json=values(data_json), update_time=sysdate()
+    </insert>
+
+    <select id="countActiveContentRecord" resultType="int">
+        select count(*) from mc_record
+        where client_id=#{clientId} and record_type=#{recordType} and content_key=#{contentKey}
+          and record_key != #{recordKey} and status != 'canceled'
+    </select>
+
+    <select id="countDuplicateConsultation" resultType="int">
+        select count(*) from mc_record
+        where client_id=#{clientId} and record_type='consultation' and record_key != #{recordKey}
+          and status != 'canceled'
+          and json_unquote(json_extract(data_json, '$.date'))=#{appointmentDate}
+          and json_unquote(json_extract(data_json, '$.time'))=#{appointmentTime}
+    </select>
+
+    <select id="selectActivityEnrollmentCount" resultType="int">
+        select coalesce(sum(cast(json_unquote(json_extract(data_json, '$.count')) as unsigned)), 0)
+        from mc_record where record_type='activity' and content_key=#{contentKey} and record_key != #{recordKey} and status != 'canceled'
+    </select>
+
+    <update id="updateRecordStatus">
+        update mc_record set status=#{status}, update_by=#{updateBy}, update_time=sysdate() where record_id=#{recordId}
+    </update>
+
+    <delete id="deleteClientRecords" parameterType="String">delete from mc_record where client_id=#{clientId}</delete>
+
+    <select id="selectClientList" parameterType="MindcareClient" resultMap="ClientResult">
+        select client_id, token_hash, nickname, phone, last_seen_time, create_time, update_time from mc_client
+        <where>
+            <if test="clientId != null and clientId != ''">and client_id like concat('%', #{clientId}, '%')</if>
+            <if test="nickname != null and nickname != ''">and nickname like concat('%', #{nickname}, '%')</if>
+            <if test="phone != null and phone != ''">and phone like concat('%', #{phone}, '%')</if>
+        </where>
+        order by last_seen_time desc
+    </select>
+
+    <select id="selectClientById" parameterType="String" resultMap="ClientResult">
+        select client_id, token_hash, nickname, phone, last_seen_time, create_time, update_time from mc_client where client_id=#{clientId}
+    </select>
+
+    <insert id="insertClient" parameterType="MindcareClient">
+        insert into mc_client (client_id, token_hash, nickname, phone, last_seen_time, create_time, update_time)
+        values (#{clientId}, #{tokenHash}, #{nickname}, #{phone}, sysdate(), sysdate(), sysdate())
+    </insert>
+
+    <update id="touchClient" parameterType="MindcareClient">
+        update mc_client set nickname=coalesce(#{nickname}, nickname), phone=coalesce(#{phone}, phone), last_seen_time=sysdate(), update_time=sysdate() where client_id=#{clientId}
+    </update>
+
+    <select id="selectDashboardStats" resultType="java.util.HashMap">
+        select
+            (select count(*) from mc_client) clientCount,
+            (select count(*) from mc_content where content_type='assessment' and status='0') assessmentCount,
+            (select count(*) from mc_content where content_type='course' and status='0') courseCount,
+            (select count(*) from mc_content where content_type='activity' and status='0') activityCount,
+            (select count(*) from mc_record where record_type='assessment') assessmentRecordCount,
+            (select count(*) from mc_record where record_type='consultation' and status in ('submitted','pending')) pendingConsultationCount,
+            (select count(*) from mc_record where record_type='activity') activityEnrollmentCount
+    </select>
+
+    <select id="selectRecentRecords" resultMap="RecordResult">
+        select <include refid="recordColumns"/> from mc_record order by update_time desc, record_id desc limit 8
+    </select>
+</mapper>

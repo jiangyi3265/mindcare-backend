@@ -1,0 +1,98 @@
+# 项目相关配置
+ruoyi:
+  name: MindCare 管理系统
+  version: 3.9.1
+  copyrightYear: 2026
+  # 生产环境请通过 FILE_UPLOAD_PATH 指向持久化目录
+  profile: ${FILE_UPLOAD_PATH:./uploads}
+  addressEnabled: false
+  captchaType: math
+
+# 开发环境配置
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+  tomcat:
+    uri-encoding: UTF-8
+    accept-count: 1000
+    threads:
+      max: 800
+      min-spare: 100
+
+# 日志配置
+logging:
+  level:
+    # 默认不打印 SQL 参数，避免手机号、测评答案等业务数据进入日志
+    com.ruoyi: ${LOG_LEVEL_RUOYI:info}
+    org.springframework: warn
+
+# 用户配置
+user:
+  password:
+    maxRetryCount: 5
+    lockTime: 10
+
+# Spring 配置
+spring:
+  messages:
+    basename: i18n/messages
+  profiles:
+    active: druid
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+  devtools:
+    restart:
+      enabled: true
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    database: ${REDIS_DATABASE:0}
+    password: ${REDIS_PASSWORD:}
+    timeout: 10s
+    lettuce:
+      pool:
+        min-idle: 0
+        max-idle: 8
+        max-active: 8
+        max-wait: -1ms
+
+# Token 密钥不提供默认值，启动前必须通过环境变量注入
+token:
+  header: Authorization
+  secret: ${TOKEN_SECRET}
+  expireTime: 30
+
+# 首次部署时可临时注入管理员密码；源码和 SQL 中不保存可用默认密码
+mindcare:
+  admin-bootstrap-password: ${ADMIN_BOOTSTRAP_PASSWORD:}
+
+# MyBatis 配置
+mybatis:
+  typeAliasesPackage: com.ruoyi.**.domain
+  mapperLocations: classpath*:mapper/**/*Mapper.xml
+  configLocation: classpath:mybatis/mybatis-config.xml
+
+# PageHelper 分页插件
+pagehelper:
+  helperDialect: mysql
+  supportMethodsArguments: true
+  params: count=countSql
+
+# Swagger 配置
+swagger:
+  enabled: ${SWAGGER_ENABLED:true}
+  pathMapping: /dev-api
+
+# 防盗链配置
+referer:
+  enabled: false
+  allowed-domains: localhost,127.0.0.1
+
+# XSS 防护
+xss:
+  enabled: true
+  excludes: /system/notice
+  urlPatterns: /system/*,/monitor/*,/tool/*
