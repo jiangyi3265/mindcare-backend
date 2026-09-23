@@ -137,6 +137,12 @@
         from mc_record where record_type='activity' and content_key=#{contentKey} and record_key != #{recordKey} and status != 'canceled'
     </select>
 
+    <select id="selectActivityEnrollmentCountExcludingClient" resultType="int">
+        select coalesce(sum(cast(json_unquote(json_extract(data_json, '$.count')) as unsigned)), 0)
+        from mc_record where record_type='activity' and content_key=#{contentKey}
+          and client_id != #{clientId} and status != 'canceled'
+    </select>
+
     <update id="updateRecordStatus">
         update mc_record set status=#{status}, update_by=#{updateBy}, update_time=sysdate() where record_id=#{recordId}
     </update>
@@ -160,6 +166,7 @@
     <insert id="insertClient" parameterType="MindcareClient">
         insert into mc_client (client_id, token_hash, nickname, phone, last_seen_time, create_time, update_time)
         values (#{clientId}, #{tokenHash}, #{nickname}, #{phone}, sysdate(), sysdate(), sysdate())
+        on duplicate key update client_id=client_id
     </insert>
 
     <update id="touchClient" parameterType="MindcareClient">

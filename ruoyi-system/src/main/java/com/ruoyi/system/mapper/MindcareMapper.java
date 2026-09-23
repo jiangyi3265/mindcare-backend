@@ -27,6 +27,7 @@ public interface MindcareMapper
     int countDuplicateConsultation(@Param("clientId") String clientId, @Param("recordKey") String recordKey,
         @Param("appointmentDate") String appointmentDate, @Param("appointmentTime") String appointmentTime);
     int selectActivityEnrollmentCount(@Param("contentKey") String contentKey, @Param("recordKey") String recordKey);
+    int selectActivityEnrollmentCountExcludingClient(@Param("contentKey") String contentKey, @Param("clientId") String clientId);
     int updateRecordStatus(@Param("recordId") Long recordId, @Param("status") String status, @Param("updateBy") String updateBy);
     int deleteClientRecords(String clientId);
 

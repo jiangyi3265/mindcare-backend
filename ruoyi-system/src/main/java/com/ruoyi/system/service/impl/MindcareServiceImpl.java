@@ -2,6 +2,7 @@ package com.ruoyi.system.service.impl;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -84,7 +85,18 @@ public class MindcareServiceImpl implements IMindcareService
     @Override
     public int updateRecordStatus(Long recordId, String status, String updateBy)
     {
-        if (!isAllowedStatus(status))
+        MindcareRecord record = mapper.selectRecordById(recordId);
+        if (record == null)
+        {
+            throw new ServiceException("记录不存在");
+        }
+        if (!("consultation".equals(record.getRecordType()) || "activity".equals(record.getRecordType())
+            || "message".equals(record.getRecordType())))
+        {
+            throw new ServiceException("此记录类型不支持人工处理");
+        }
+        if (!("pending".equals(status) || "confirmed".equals(status)
+            || "canceled".equals(status) || "completed".equals(status)))
         {
             throw new ServiceException("记录状态不正确");
         }
@@ -111,18 +123,16 @@ public class MindcareServiceImpl implements IMindcareService
     public MindcareClient registerClient(String clientId, String token, String nickname, String phone)
     {
         validateCredentials(clientId, token);
+        MindcareClient client = new MindcareClient();
+        client.setClientId(clientId);
+        client.setTokenHash(SecurityUtils.encryptPassword(token));
+        client.setNickname(limit(nickname, 50));
+        client.setPhone(limit(phone, 30));
+        // Concurrent app launches may register the same locally persisted identity.
+        // The insert is atomic and leaves an existing credential untouched.
+        mapper.insertClient(client);
         MindcareClient existing = mapper.selectClientById(clientId);
-        if (existing == null)
-        {
-            MindcareClient client = new MindcareClient();
-            client.setClientId(clientId);
-            client.setTokenHash(SecurityUtils.encryptPassword(token));
-            client.setNickname(limit(nickname, 50));
-            client.setPhone(limit(phone, 30));
-            mapper.insertClient(client);
-            return client;
-        }
-        if (!SecurityUtils.matchesPassword(token, existing.getTokenHash()))
+        if (existing == null || !SecurityUtils.matchesPassword(token, existing.getTokenHash()))
         {
             throw new ServiceException("客户端凭证无效");
         }
@@ -166,6 +176,9 @@ public class MindcareServiceImpl implements IMindcareService
             }
             else if ("activity".equals(content.getContentType()))
             {
+                JSONObject activity = (JSONObject) payload;
+                activity.put("enrolled", activity.getIntValue("enrolled")
+                    + mapper.selectActivityEnrollmentCountExcludingClient(content.getContentKey(), clientId));
                 activities.add(payload);
             }
         }
@@ -215,6 +228,10 @@ public class MindcareServiceImpl implements IMindcareService
     {
         try
         {
+            if (content.getPayloadJson() == null || content.getPayloadJson().length() > MAX_PAYLOAD_LENGTH)
+            {
+                throw new ServiceException("内容配置不能为空或超过长度限制");
+            }
             Object payload = JSON.parse(content.getPayloadJson());
             if (!(payload instanceof JSONObject))
             {
@@ -224,6 +241,84 @@ public class MindcareServiceImpl implements IMindcareService
             if (!content.getContentKey().equals(object.getString("id")))
             {
                 throw new ServiceException("内容配置中的 id 必须与内容标识一致");
+            }
+            if (content.getTitle() == null || !content.getTitle().equals(object.getString("title")))
+            {
+                throw new ServiceException("内容配置中的 title 必须与标题一致");
+            }
+            if ("assessment".equals(content.getContentType()))
+            {
+                JSONArray questions = object.getJSONArray("questions");
+                int count = object.getIntValue("count");
+                if (questions == null || count < 1 || count > 100 || questions.size() != count)
+                {
+                    throw new ServiceException("量表题数必须与非空题目列表一致（1-100题）");
+                }
+                for (Object question : questions)
+                {
+                    if (!(question instanceof String) || StringUtils.isEmpty(((String) question).trim()))
+                    {
+                        throw new ServiceException("量表题目不能为空");
+                    }
+                }
+                if (object.getIntValue("minutes") < 1)
+                {
+                    throw new ServiceException("量表预计时长必须大于 0");
+                }
+            }
+            else if ("course".equals(content.getContentType()))
+            {
+                JSONArray chapters = object.getJSONArray("chapters");
+                if (object.getIntValue("minutes") < 1 || chapters == null || chapters.isEmpty())
+                {
+                    throw new ServiceException("课程时长和章节不能为空");
+                }
+                for (Object chapterValue : chapters)
+                {
+                    if (!(chapterValue instanceof JSONObject))
+                    {
+                        throw new ServiceException("课程章节格式不正确");
+                    }
+                    JSONObject chapter = (JSONObject) chapterValue;
+                    String duration = chapter.getString("duration");
+                    if (StringUtils.isEmpty(chapter.getString("title")) || duration == null
+                        || !duration.matches("^\\d{1,3}:[0-5]\\d$"))
+                    {
+                        throw new ServiceException("课程章节需要标题和分:秒格式的时长");
+                    }
+                }
+            }
+            else if ("activity".equals(content.getContentType()))
+            {
+                String date = object.getString("date");
+                if (StringUtils.isEmpty(date))
+                {
+                    throw new ServiceException("活动日期不能为空");
+                }
+                try
+                {
+                    LocalDate.parse(date);
+                }
+                catch (Exception e)
+                {
+                    throw new ServiceException("活动日期必须为 YYYY-MM-DD");
+                }
+                JSONArray schedule = object.getJSONArray("schedule");
+                if (StringUtils.isEmpty(object.getString("time")) || StringUtils.isEmpty(object.getString("location"))
+                    || object.getIntValue("capacity") < 1 || object.getIntValue("enrolled") < 0
+                    || object.getIntValue("enrolled") > object.getIntValue("capacity")
+                    || !("报名中".equals(object.getString("status")) || "进行中".equals(object.getString("status"))
+                        || "已结束".equals(object.getString("status"))) || schedule == null)
+                {
+                    throw new ServiceException("活动时间、地点、人数或日程配置不正确");
+                }
+                for (Object item : schedule)
+                {
+                    if (!(item instanceof JSONArray) || ((JSONArray) item).size() < 3)
+                    {
+                        throw new ServiceException("活动日程需使用 [时间, 标题, 说明] 格式");
+                    }
+                }
             }
         }
         catch (ServiceException e)
