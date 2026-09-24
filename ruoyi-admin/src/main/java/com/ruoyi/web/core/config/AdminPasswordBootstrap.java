@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
+import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.mapper.SysUserMapper;
@@ -37,9 +38,10 @@ public class AdminPasswordBootstrap implements ApplicationRunner
             log.warn("ADMIN_BOOTSTRAP_PASSWORD 未设置，初始化数据库中的 admin 随机密码不会被修改");
             return;
         }
-        if (bootstrapPassword.length() < 8 || bootstrapPassword.length() > 50)
+        if (bootstrapPassword.length() < 8 || bootstrapPassword.length() > UserConstants.PASSWORD_MAX_LENGTH)
         {
-            throw new IllegalStateException("ADMIN_BOOTSTRAP_PASSWORD 长度必须为 8 到 50 个字符");
+            throw new IllegalStateException("ADMIN_BOOTSTRAP_PASSWORD 长度必须为 8 到 "
+                + UserConstants.PASSWORD_MAX_LENGTH + " 个字符");
         }
         userMapper.resetUserPwd(1L, SecurityUtils.encryptPassword(bootstrapPassword));
         log.info("已通过环境变量更新初始管理员密码；部署完成后建议移除 ADMIN_BOOTSTRAP_PASSWORD");
