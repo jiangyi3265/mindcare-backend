@@ -4,7 +4,7 @@ MindCare 心理健康服务项目的后端基础服务，为管理后台与用�
 
 ## 项目简介
 
-`mindcare-backend` 基于 RuoYi 前后端分离版整理为独立的 Spring Boot 多模块工程。除用户、角色、菜单、日志、JWT 鉴权等通用能力外，当前代码已实现 MindCare 三端业务接口：量表、课程和活动内容发布，用户端手机号与密码账号、匿名访客体验、测评/咨询/课程进度/活动报名与留言记录同步，以及后台运营概览和状态处理。
+`mindcare-backend` 基于 RuoYi 前后端分离版整理为独立的 Spring Boot 多模块工程。除用户、角色、菜单、日志、JWT 鉴权等通用能力外，当前代码已实现 MindCare 三端业务接口：量表、课程、活动和测评首页轮播图内容发布，用户端手机号与密码账号、匿名访客体验、测评/咨询/课程进度/活动报名与留言记录同步，以及后台运营概览和状态处理。
 
 用户端通过随机客户端标识与独立凭证建立设备身份；登录后记录归属账号，跨设备读取同一账号的数据，首次登录会合并当前设备访客记录。密码、设备凭证与一次性恢复码只保存 BCrypt 摘要。管理接口继续使用 RuoYi 登录与权限体系，公开用户端接口只开放在 `/app/mindcare/**`，并在服务层校验设备凭证、账号归属和业务字段。
 
@@ -37,6 +37,8 @@ mysql -u root -p mindcare < sql/mindcare.sql
 ```
 
 已有 MindCare 数据库不要重新运行上面的初始化脚本。先备份数据库，再**仅执行一次** `sql/mindcare_account_migration.sql`，最后部署新版后端与两个前端。
+
+已有账号迁移后的数据库如需启用首页轮播图，在备份后执行可重复运行的 `sql/mindcare_banner_migration.sql`，添加两张初始图片和后台菜单；不要重新运行会清空业务表的 `sql/mindcare.sql`。
 
 随后设置运行所需环境变量：
 
@@ -74,7 +76,7 @@ bin/               启停辅助脚本
 
 `ruoyi-quartz` 与 `ruoyi-generator` 源码仍保留在目录中，但当前父工程未启用这两个模块。
 
-MindCare 业务代码位于 `ruoyi-system` 的 `Mindcare*` 领域、Mapper 与服务中，管理/用户端控制器位于 `ruoyi-admin/src/main/java/com/ruoyi/web/controller/mindcare/`。`sql/mindcare.sql` 包含业务表、初始量表/课程/活动和动态菜单权限。
+MindCare 业务代码位于 `ruoyi-system` 的 `Mindcare*` 领域、Mapper 与服务中，管理/用户端控制器位于 `ruoyi-admin/src/main/java/com/ruoyi/web/controller/mindcare/`。`sql/mindcare.sql` 包含业务表、初始量表/课程/活动/轮播图和动态菜单权限。
 
 ## 三端接口
 

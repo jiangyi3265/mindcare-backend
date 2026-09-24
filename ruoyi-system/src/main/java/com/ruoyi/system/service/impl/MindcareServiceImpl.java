@@ -361,6 +361,7 @@ public class MindcareServiceImpl implements IMindcareService
         List<Object> assessments = new ArrayList<>();
         List<Object> courses = new ArrayList<>();
         List<Object> activities = new ArrayList<>();
+        List<Object> banners = new ArrayList<>();
         for (MindcareContent content : contents)
         {
             Object payload = JSON.parse(content.getPayloadJson());
@@ -379,11 +380,16 @@ public class MindcareServiceImpl implements IMindcareService
                     + mapper.selectActivityEnrollmentCountExcludingOwner(content.getContentKey(), ownerKey(client)));
                 activities.add(payload);
             }
+            else if ("banner".equals(content.getContentType()))
+            {
+                banners.add(payload);
+            }
         }
         Map<String, Object> data = new HashMap<>();
         data.put("assessments", assessments);
         data.put("courses", courses);
         data.put("activities", activities);
+        data.put("banners", banners);
         data.put("records", mapper.selectOwnerRecordList(ownerKey(client)));
         data.put("account", client.getAccountId() == null ? null : accountInfo(mapper.selectAccountById(client.getAccountId())));
         return data;
@@ -533,6 +539,15 @@ public class MindcareServiceImpl implements IMindcareService
                     {
                         throw new ServiceException("活动日程需使用 [时间, 标题, 说明] 格式");
                     }
+                }
+            }
+            else if ("banner".equals(content.getContentType()))
+            {
+                String image = object.getString("image");
+                if (image == null || !(image.matches("^builtin:(hero|rest)$")
+                    || image.matches("^/profile/upload/[A-Za-z0-9/_-]+\\.(png|jpe?g|webp)$")))
+                {
+                    throw new ServiceException("轮播图必须使用内置图片或后台上传的图片");
                 }
             }
         }

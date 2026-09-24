@@ -103,12 +103,18 @@ insert into mc_content (content_key, content_type, title, category, summary, pay
 ('forest', 'activity', '周末森林疗愈散步', '线下活动', '在自然中散步，通过呼吸练习与交流放松身心。', json_object('id','forest','title','周末森林疗愈散步','date','2026-09-26','time','09:30–11:30','location','城市森林公园·南门','capacity',30,'enrolled',18,'status','报名中','art','walking','hero','forest','intro','在自然中散步，通过呼吸练习与交流放松身心，感受自然的温柔力量。','schedule',json_array(json_array('09:30','集合签到','集合，向导介绍'),json_array('10:00','森林漫步','放慢脚步，感受自然'),json_array('11:00','分享交流','分享感受，温暖倾听'))), '0', 1, 'admin', sysdate()),
 ('family', 'activity', '亲子情绪沟通工作坊', '亲子活动', '一起练习倾听，在轻松互动中学习表达感受。', json_object('id','family','title','亲子情绪沟通工作坊','date','2026-09-27','time','14:00–16:00','location','阳光社区活动中心','capacity',20,'enrolled',12,'status','报名中','art','family','hero','activityHero','intro','一起练习倾听，在轻松的互动中学习表达感受，建立更亲密的亲子关系。','schedule',json_array(json_array('14:00','签到入场','认识彼此'),json_array('14:30','互动练习','感受与表达'),json_array('15:30','分享交流','一起总结收获'))), '0', 2, 'admin', sysdate());
 
--- 后台菜单。父目录 + 7 个页面 + 通用按钮权限。
+-- 测评首页轮播图。
+insert into mc_content (content_key, content_type, title, category, summary, payload_json, status, sort_order, create_by, create_time) values
+('home-welcome', 'banner', '给心情，一点被看见的时间', '首页轮播图', '', json_object('id', 'home-welcome', 'title', '给心情，一点被看见的时间', 'image', 'builtin:hero'), '0', 1, 'admin', sysdate()),
+('home-rest', 'banner', '慢下来，听见自己', '首页轮播图', '', json_object('id', 'home-rest', 'title', '慢下来，听见自己', 'image', 'builtin:rest'), '0', 2, 'admin', sysdate());
+
+-- 后台菜单。父目录 + 8 个页面 + 通用按钮权限。
 delete from sys_menu where menu_id between 2000 and 2099;
 insert into sys_menu values
 (2000, 'MindCare运营', 0, 1, 'mindcare', 'Layout', null, 'Mindcare', 1, 0, 'M', '0', '0', null, 'guide', 'admin', sysdate(), '', null, 'MindCare三端运营管理'),
 (2001, '运营概览', 2000, 1, 'dashboard', 'mindcare/dashboard/index', null, 'MindcareDashboard', 1, 0, 'C', '0', '0', 'mindcare:dashboard:view', 'dashboard', 'admin', sysdate(), '', null, ''),
 (2002, '心理量表', 2000, 2, 'assessments', 'mindcare/content/assessment', null, 'MindcareAssessments', 1, 0, 'C', '0', '0', 'mindcare:content:list', 'edit', 'admin', sysdate(), '', null, ''),
+(2008, '首页轮播图', 2000, 2, 'banners', 'mindcare/content/banner', null, 'MindcareBanners', 1, 0, 'C', '0', '0', 'mindcare:content:list', 'picture', 'admin', sysdate(), '', null, '测评首页轮播图管理'),
 (2003, '心理课程', 2000, 3, 'courses', 'mindcare/content/course', null, 'MindcareCourses', 1, 0, 'C', '0', '0', 'mindcare:content:list', 'education', 'admin', sysdate(), '', null, ''),
 (2004, '疗愈活动', 2000, 4, 'activities', 'mindcare/content/activity', null, 'MindcareActivities', 1, 0, 'C', '0', '0', 'mindcare:content:list', 'date', 'admin', sysdate(), '', null, ''),
 (2005, '咨询预约', 2000, 5, 'consultations', 'mindcare/record/consultation', null, 'MindcareConsultations', 1, 0, 'C', '0', '0', 'mindcare:record:list', 'message', 'admin', sysdate(), '', null, ''),
