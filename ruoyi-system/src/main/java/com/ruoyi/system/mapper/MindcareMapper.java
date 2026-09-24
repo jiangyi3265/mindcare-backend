@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.ibatis.annotations.Param;
 import com.ruoyi.system.domain.MindcareClient;
+import com.ruoyi.system.domain.MindcareAccount;
 import com.ruoyi.system.domain.MindcareContent;
 import com.ruoyi.system.domain.MindcareRecord;
 
@@ -19,23 +20,36 @@ public interface MindcareMapper
     int deleteContentByIds(Long[] contentIds);
 
     List<MindcareRecord> selectRecordList(MindcareRecord record);
-    List<MindcareRecord> selectClientRecordList(String clientId);
+    List<MindcareRecord> selectOwnerRecordList(String ownerKey);
     MindcareRecord selectRecordById(Long recordId);
-    MindcareRecord selectClientRecordByKey(@Param("clientId") String clientId, @Param("recordKey") String recordKey);
+    MindcareRecord selectOwnerRecordByKey(@Param("ownerKey") String ownerKey, @Param("recordKey") String recordKey);
     int upsertRecord(MindcareRecord record);
-    int countActiveContentRecord(@Param("clientId") String clientId, @Param("recordType") String recordType,
+    int countActiveContentRecord(@Param("ownerKey") String ownerKey, @Param("recordType") String recordType,
         @Param("contentKey") String contentKey, @Param("recordKey") String recordKey);
-    int countDuplicateConsultation(@Param("clientId") String clientId, @Param("recordKey") String recordKey,
+    int countDuplicateConsultation(@Param("ownerKey") String ownerKey, @Param("recordKey") String recordKey,
         @Param("appointmentDate") String appointmentDate, @Param("appointmentTime") String appointmentTime);
     int selectActivityEnrollmentCount(@Param("contentKey") String contentKey, @Param("recordKey") String recordKey);
-    int selectActivityEnrollmentCountExcludingClient(@Param("contentKey") String contentKey, @Param("clientId") String clientId);
+    int selectActivityEnrollmentCountExcludingOwner(@Param("contentKey") String contentKey, @Param("ownerKey") String ownerKey);
     int updateRecordStatus(@Param("recordId") Long recordId, @Param("status") String status, @Param("updateBy") String updateBy);
-    int deleteClientRecords(String clientId);
+    int deleteOwnerRecords(String ownerKey);
 
     List<MindcareClient> selectClientList(MindcareClient client);
     MindcareClient selectClientById(String clientId);
     int insertClient(MindcareClient client);
     int touchClient(MindcareClient client);
+    int bindClientAccount(@Param("clientId") String clientId, @Param("accountId") Long accountId);
+    int revokeClient(@Param("clientId") String clientId, @Param("tokenHash") String tokenHash);
+    int unbindAccountClients(Long accountId);
+    int countGuestAccountCollisions(@Param("guestOwner") String guestOwner, @Param("accountOwner") String accountOwner);
+    int moveGuestRecordsToAccount(@Param("guestOwner") String guestOwner, @Param("accountOwner") String accountOwner);
+
+    MindcareAccount selectAccountByPhoneForUpdate(String phone);
+    MindcareAccount selectAccountById(Long accountId);
+    List<MindcareAccount> selectAccountList(MindcareAccount account);
+    int insertAccount(MindcareAccount account);
+    int updateAccountFailures(MindcareAccount account);
+    int updateAccountCredentials(MindcareAccount account);
+    int updateAccountNickname(MindcareAccount account);
 
     Map<String, Object> selectDashboardStats();
     List<MindcareRecord> selectRecentRecords();

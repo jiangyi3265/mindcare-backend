@@ -20,6 +20,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.system.domain.MindcareClient;
+import com.ruoyi.system.domain.MindcareAccount;
 import com.ruoyi.system.domain.MindcareContent;
 import com.ruoyi.system.domain.MindcareRecord;
 import com.ruoyi.system.service.IMindcareService;
@@ -109,5 +110,13 @@ public class MindcareController extends BaseController
     {
         startPage();
         return getDataTable(service.selectClientList(client));
+    }
+
+    @PreAuthorize("@ss.hasPermi('mindcare:client:list')")
+    @GetMapping("/account/list")
+    public TableDataInfo accountList(MindcareAccount account)
+    {
+        startPage();
+        return getDataTable(service.selectAccountList(account));
     }
 }

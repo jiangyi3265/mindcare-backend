@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.ruoyi.common.core.domain.BaseEntity;
 
 /**
@@ -21,6 +22,8 @@ public class MindcareRecord extends BaseEntity
     private String recordKey;
 
     private String clientId;
+    @JsonIgnore
+    private String ownerKey;
 
     @NotBlank(message = "记录类型不能为空")
     @Pattern(regexp = "^(assessment|consultation|course|activity|message)$", message = "记录类型不正确")
@@ -48,6 +51,8 @@ public class MindcareRecord extends BaseEntity
     public void setRecordKey(String recordKey) { this.recordKey = recordKey; }
     public String getClientId() { return clientId; }
     public void setClientId(String clientId) { this.clientId = clientId; }
+    public String getOwnerKey() { return ownerKey; }
+    public void setOwnerKey(String ownerKey) { this.ownerKey = ownerKey; }
     public String getRecordType() { return recordType; }
     public void setRecordType(String recordType) { this.recordType = recordType; }
     public String getContentKey() { return contentKey; }

@@ -12,6 +12,8 @@ public class MindcareClient extends BaseEntity
     private static final long serialVersionUID = 1L;
 
     private String clientId;
+    private Long accountId;
+    private String accountPhone;
 
     @JsonIgnore
     private String tokenHash;
@@ -22,6 +24,10 @@ public class MindcareClient extends BaseEntity
 
     public String getClientId() { return clientId; }
     public void setClientId(String clientId) { this.clientId = clientId; }
+    public Long getAccountId() { return accountId; }
+    public void setAccountId(Long accountId) { this.accountId = accountId; }
+    public String getAccountPhone() { return accountPhone; }
+    public void setAccountPhone(String accountPhone) { this.accountPhone = accountPhone; }
     public String getTokenHash() { return tokenHash; }
     public void setTokenHash(String tokenHash) { this.tokenHash = tokenHash; }
     public String getNickname() { return nickname; }

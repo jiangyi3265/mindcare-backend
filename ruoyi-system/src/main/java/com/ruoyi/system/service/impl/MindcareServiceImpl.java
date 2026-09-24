@@ -2,11 +2,13 @@ package com.ruoyi.system.service.impl;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Date;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -18,6 +20,7 @@ import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.MindcareClient;
+import com.ruoyi.system.domain.MindcareAccount;
 import com.ruoyi.system.domain.MindcareContent;
 import com.ruoyi.system.domain.MindcareRecord;
 import com.ruoyi.system.mapper.MindcareMapper;
@@ -27,6 +30,7 @@ import com.ruoyi.system.service.IMindcareService;
 public class MindcareServiceImpl implements IMindcareService
 {
     private static final int MAX_PAYLOAD_LENGTH = 20000;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Autowired
     private MindcareMapper mapper;
@@ -111,6 +115,12 @@ public class MindcareServiceImpl implements IMindcareService
     }
 
     @Override
+    public List<MindcareAccount> selectAccountList(MindcareAccount account)
+    {
+        return mapper.selectAccountList(account);
+    }
+
+    @Override
     public Map<String, Object> dashboard()
     {
         Map<String, Object> result = new HashMap<>();
@@ -157,9 +167,196 @@ public class MindcareServiceImpl implements IMindcareService
     }
 
     @Override
+    @Transactional
+    public Map<String, Object> registerAccount(String clientId, String token, String phone, String password, String nickname)
+    {
+        MindcareClient client = authenticateClient(clientId, token);
+        if (client.getAccountId() != null)
+        {
+            throw new ServiceException("请先退出当前账号");
+        }
+        validatePhone(phone);
+        validatePassword(password);
+        if (mapper.selectAccountByPhoneForUpdate(phone) != null)
+        {
+            throw new ServiceException("该手机号已注册，请直接登录");
+        }
+        String recoveryCode = newRecoveryCode();
+        MindcareAccount account = new MindcareAccount();
+        account.setPhone(phone);
+        account.setPasswordHash(SecurityUtils.encryptPassword(password));
+        account.setRecoveryHash(SecurityUtils.encryptPassword(normalizeRecoveryCode(recoveryCode)));
+        account.setNickname(nickname == null ? "心友" : limit(nickname, 20).trim());
+        if (StringUtils.isEmpty(account.getNickname())) account.setNickname("心友");
+        mapper.insertAccount(account);
+        bindAccount(client, account);
+        Map<String, Object> result = accountInfo(account);
+        result.put("recoveryCode", recoveryCode);
+        return result;
+    }
+
+    @Override
+    @Transactional(noRollbackFor = ServiceException.class)
+    public Map<String, Object> loginAccount(String clientId, String token, String phone, String password)
+    {
+        MindcareClient client = authenticateClient(clientId, token);
+        validatePhone(phone);
+        if (password == null || password.length() > 72)
+        {
+            throw new ServiceException("手机号或密码错误");
+        }
+        MindcareAccount account = mapper.selectAccountByPhoneForUpdate(phone);
+        if (account == null)
+        {
+            throw new ServiceException("手机号或密码错误");
+        }
+        if (account.getLockedUntil() != null && account.getLockedUntil().after(new Date()))
+        {
+            throw new ServiceException("尝试次数过多，请10分钟后再试");
+        }
+        if (!SecurityUtils.matchesPassword(password, account.getPasswordHash()))
+        {
+            int attempts = account.getLockedUntil() == null ? account.getFailedAttempts() : 0;
+            account.setFailedAttempts(attempts + 1);
+            account.setLockedUntil(attempts + 1 >= 5 ? new Date(System.currentTimeMillis() + 10 * 60 * 1000L) : null);
+            mapper.updateAccountFailures(account);
+            throw new ServiceException("手机号或密码错误");
+        }
+        if (client.getAccountId() != null && !client.getAccountId().equals(account.getAccountId()))
+        {
+            throw new ServiceException("请先退出当前账号");
+        }
+        account.setFailedAttempts(0);
+        account.setLockedUntil(null);
+        mapper.updateAccountFailures(account);
+        bindAccount(client, account);
+        return accountInfo(account);
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> recoverAccount(String clientId, String token, String phone, String recoveryCode, String newPassword)
+    {
+        MindcareClient client = authenticateClient(clientId, token);
+        validatePhone(phone);
+        validatePassword(newPassword);
+        String normalized = normalizeRecoveryCode(recoveryCode);
+        MindcareAccount account = mapper.selectAccountByPhoneForUpdate(phone);
+        if (account == null || normalized == null || !SecurityUtils.matchesPassword(normalized, account.getRecoveryHash()))
+        {
+            throw new ServiceException("手机号或恢复码错误");
+        }
+        if (client.getAccountId() != null && !client.getAccountId().equals(account.getAccountId()))
+        {
+            throw new ServiceException("请先退出当前账号");
+        }
+        String nextRecoveryCode = newRecoveryCode();
+        account.setPasswordHash(SecurityUtils.encryptPassword(newPassword));
+        account.setRecoveryHash(SecurityUtils.encryptPassword(normalizeRecoveryCode(nextRecoveryCode)));
+        mapper.updateAccountCredentials(account);
+        // Password recovery invalidates every other device's account binding.
+        mapper.unbindAccountClients(account.getAccountId());
+        bindAccount(client, account);
+        Map<String, Object> result = accountInfo(account);
+        result.put("recoveryCode", nextRecoveryCode);
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> updateAccountProfile(String clientId, String token, String nickname)
+    {
+        MindcareClient client = authenticateClient(clientId, token);
+        if (client.getAccountId() == null) throw new ServiceException("请先登录");
+        String value = nickname == null ? "" : limit(nickname, 20).trim();
+        if (value.isEmpty()) throw new ServiceException("昵称不能为空");
+        MindcareAccount account = mapper.selectAccountById(client.getAccountId());
+        account.setNickname(value);
+        mapper.updateAccountNickname(account);
+        client.setNickname(value);
+        mapper.touchClient(client);
+        return accountInfo(account);
+    }
+
+    @Override
+    @Transactional
+    public void logoutAccount(String clientId, String token)
+    {
+        MindcareClient client = authenticateClient(clientId, token);
+        if (client.getAccountId() == null) return;
+        mapper.revokeClient(clientId, SecurityUtils.encryptPassword(newRecoveryCode()));
+    }
+
+    private void bindAccount(MindcareClient client, MindcareAccount account)
+    {
+        String guestOwner = "c:" + client.getClientId();
+        String accountOwner = "a:" + account.getAccountId();
+        if (client.getAccountId() == null)
+        {
+            if (mapper.countGuestAccountCollisions(guestOwner, accountOwner) > 0)
+            {
+                throw new ServiceException("当前设备记录与账号已有记录冲突，请联系客服");
+            }
+            mapper.moveGuestRecordsToAccount(guestOwner, accountOwner);
+        }
+        mapper.bindClientAccount(client.getClientId(), account.getAccountId());
+    }
+
+    private Map<String, Object> accountInfo(MindcareAccount account)
+    {
+        Map<String, Object> result = new HashMap<>();
+        result.put("accountId", account.getAccountId());
+        result.put("phone", account.getPhone());
+        result.put("nickname", account.getNickname());
+        return result;
+    }
+
+    private String ownerKey(MindcareClient client)
+    {
+        return client.getAccountId() == null ? "c:" + client.getClientId() : "a:" + client.getAccountId();
+    }
+
+    private void validatePhone(String phone)
+    {
+        if (phone == null || !phone.matches("^1[3-9]\\d{9}$"))
+        {
+            throw new ServiceException("请输入正确的11位手机号");
+        }
+    }
+
+    private void validatePassword(String password)
+    {
+        if (password == null || password.length() < 8 || password.length() > 72
+            || !password.matches(".*[A-Za-z].*") || !password.matches(".*\\d.*"))
+        {
+            throw new ServiceException("密码需为8到72位，且包含字母和数字");
+        }
+    }
+
+    private String newRecoveryCode()
+    {
+        byte[] bytes = new byte[16];
+        SECURE_RANDOM.nextBytes(bytes);
+        StringBuilder value = new StringBuilder(39);
+        for (int i = 0; i < bytes.length; i++)
+        {
+            if (i > 0 && i % 2 == 0) value.append('-');
+            value.append(String.format("%02X", bytes[i] & 0xff));
+        }
+        return value.toString();
+    }
+
+    private String normalizeRecoveryCode(String code)
+    {
+        if (code == null) return null;
+        String value = code.replace("-", "").replace(" ", "").toUpperCase();
+        return value.matches("^[A-F0-9]{32}$") ? value : null;
+    }
+
+    @Override
     public Map<String, Object> bootstrap(String clientId, String token)
     {
-        authenticateClient(clientId, token);
+        MindcareClient client = authenticateClient(clientId, token);
         List<MindcareContent> contents = mapper.selectPublishedContentList();
         List<Object> assessments = new ArrayList<>();
         List<Object> courses = new ArrayList<>();
@@ -179,7 +376,7 @@ public class MindcareServiceImpl implements IMindcareService
             {
                 JSONObject activity = (JSONObject) payload;
                 activity.put("enrolled", activity.getIntValue("enrolled")
-                    + mapper.selectActivityEnrollmentCountExcludingClient(content.getContentKey(), clientId));
+                    + mapper.selectActivityEnrollmentCountExcludingOwner(content.getContentKey(), ownerKey(client)));
                 activities.add(payload);
             }
         }
@@ -187,15 +384,17 @@ public class MindcareServiceImpl implements IMindcareService
         data.put("assessments", assessments);
         data.put("courses", courses);
         data.put("activities", activities);
-        data.put("records", mapper.selectClientRecordList(clientId));
+        data.put("records", mapper.selectOwnerRecordList(ownerKey(client)));
+        data.put("account", client.getAccountId() == null ? null : accountInfo(mapper.selectAccountById(client.getAccountId())));
         return data;
     }
 
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public MindcareRecord saveClientRecord(String clientId, String token, MindcareRecord record)
+    public MindcareRecord saveClientRecord(String clientId, String token, Long expectedAccountId, MindcareRecord record)
     {
-        authenticateClient(clientId, token);
+        MindcareClient client = authenticateClient(clientId, token);
+        requireExpectedAccount(client, expectedAccountId);
         if (record.getDataJson() != null && record.getDataJson().length() > MAX_PAYLOAD_LENGTH)
         {
             throw new ServiceException("记录内容过长");
@@ -205,12 +404,13 @@ public class MindcareServiceImpl implements IMindcareService
             throw new ServiceException("记录类型不正确");
         }
         record.setClientId(clientId);
+        record.setOwnerKey(ownerKey(client));
         if ("activity".equals(record.getRecordType()) && StringUtils.isNotEmpty(record.getContentKey()))
         {
             // Serialize signups for one activity before checking its remaining capacity.
             mapper.lockActivityContentByKey(record.getContentKey());
         }
-        MindcareRecord existing = mapper.selectClientRecordByKey(clientId, record.getRecordKey());
+        MindcareRecord existing = mapper.selectOwnerRecordByKey(record.getOwnerKey(), record.getRecordKey());
         if (existing != null && !record.getRecordType().equals(existing.getRecordType()))
         {
             throw new ServiceException("记录标识已被其他业务类型使用");
@@ -224,10 +424,19 @@ public class MindcareServiceImpl implements IMindcareService
 
     @Override
     @Transactional
-    public int clearClientRecords(String clientId, String token)
+    public int clearClientRecords(String clientId, String token, Long expectedAccountId)
     {
-        authenticateClient(clientId, token);
-        return mapper.deleteClientRecords(clientId);
+        MindcareClient client = authenticateClient(clientId, token);
+        requireExpectedAccount(client, expectedAccountId);
+        return mapper.deleteOwnerRecords(ownerKey(client));
+    }
+
+    private void requireExpectedAccount(MindcareClient client, Long expectedAccountId)
+    {
+        if (expectedAccountId != null && !expectedAccountId.equals(client.getAccountId()))
+        {
+            throw new ServiceException("登录状态已变化，请重新登录");
+        }
     }
 
     private void validateContent(MindcareContent content)
@@ -474,7 +683,7 @@ public class MindcareServiceImpl implements IMindcareService
             throw new ServiceException("预约日期和时段不能为空");
         }
         if (!"canceled".equals(record.getStatus())
-            && mapper.countDuplicateConsultation(record.getClientId(), record.getRecordKey(), date, time) > 0)
+            && mapper.countDuplicateConsultation(record.getOwnerKey(), record.getRecordKey(), date, time) > 0)
         {
             throw new ServiceException("该时段已经预约，请勿重复提交");
         }
@@ -486,7 +695,7 @@ public class MindcareServiceImpl implements IMindcareService
         {
             return;
         }
-        if (mapper.countActiveContentRecord(record.getClientId(), "activity", record.getContentKey(), record.getRecordKey()) > 0)
+        if (mapper.countActiveContentRecord(record.getOwnerKey(), "activity", record.getContentKey(), record.getRecordKey()) > 0)
         {
             throw new ServiceException("你已经报名该活动");
         }

@@ -3,6 +3,7 @@
 
 drop table if exists mc_record;
 drop table if exists mc_client;
+drop table if exists mc_account;
 drop table if exists mc_content;
 
 create table mc_content (
@@ -24,22 +25,40 @@ create table mc_content (
   key idx_mc_content_status_sort (content_type, status, sort_order)
 ) engine=innodb default charset=utf8mb4 comment='MindCare发布内容';
 
+create table mc_account (
+  account_id      bigint(20)    not null auto_increment comment '用户账号ID',
+  phone           varchar(11)   not null                comment '登录手机号（尚未短信验证）',
+  password_hash   varchar(100)  not null                comment '密码BCrypt摘要',
+  recovery_hash   varchar(100)  not null                comment '恢复码BCrypt摘要',
+  nickname        varchar(50)   default ''              comment '昵称',
+  failed_attempts int          not null default 0      comment '连续登录失败次数',
+  locked_until    datetime      default null            comment '临时锁定截止时间',
+  create_time     datetime                              comment '创建时间',
+  update_time     datetime                              comment '更新时间',
+  primary key (account_id),
+  unique key uk_mc_account_phone (phone)
+) engine=innodb default charset=utf8mb4 comment='MindCare用户账号';
+
 create table mc_client (
   client_id        varchar(64)   not null                comment '匿名安装标识',
   token_hash       varchar(100)  not null                comment '客户端凭证BCrypt摘要',
+  account_id       bigint(20)    default null            comment '已登录账号ID',
   nickname         varchar(50)   default ''              comment '昵称',
   phone            varchar(30)   default ''              comment '联系电话',
   last_seen_time   datetime                              comment '最近同步时间',
   create_time      datetime                              comment '创建时间',
   update_time      datetime                              comment '更新时间',
   primary key (client_id),
-  key idx_mc_client_seen (last_seen_time)
+  key idx_mc_client_seen (last_seen_time),
+  key idx_mc_client_account (account_id),
+  constraint fk_mc_client_account foreign key (account_id) references mc_account(account_id) on delete set null
 ) engine=innodb default charset=utf8mb4 comment='MindCare用户端匿名身份';
 
 create table mc_record (
   record_id        bigint(20)    not null auto_increment comment '记录ID',
   record_key       varchar(64)   not null                comment '端内稳定记录标识',
   client_id        varchar(64)   not null                comment '用户端标识',
+  owner_key        varchar(80)   not null                comment 'c:终端ID 或 a:账号ID',
   record_type      varchar(20)   not null                comment 'assessment/consultation/course/activity/message',
   content_key      varchar(64)   default null            comment '关联内容标识',
   title            varchar(100)  default ''              comment '记录标题',
@@ -54,6 +73,8 @@ create table mc_record (
   update_time      datetime                              comment '更新时间',
   primary key (record_id),
   unique key uk_mc_record_client_key (client_id, record_key),
+  unique key uk_mc_record_owner_key (owner_key, record_key),
+  key idx_mc_record_owner (owner_key, update_time),
   key idx_mc_record_type_status (record_type, status),
   key idx_mc_record_update (update_time),
   constraint fk_mc_record_client foreign key (client_id) references mc_client(client_id) on delete cascade
@@ -92,7 +113,7 @@ insert into sys_menu values
 (2004, '疗愈活动', 2000, 4, 'activities', 'mindcare/content/activity', null, 'MindcareActivities', 1, 0, 'C', '0', '0', 'mindcare:content:list', 'date', 'admin', sysdate(), '', null, ''),
 (2005, '咨询预约', 2000, 5, 'consultations', 'mindcare/record/consultation', null, 'MindcareConsultations', 1, 0, 'C', '0', '0', 'mindcare:record:list', 'message', 'admin', sysdate(), '', null, ''),
 (2006, '业务记录', 2000, 6, 'records', 'mindcare/record/index', null, 'MindcareRecords', 1, 0, 'C', '0', '0', 'mindcare:record:list', 'list', 'admin', sysdate(), '', null, ''),
-(2007, '用户终端', 2000, 7, 'clients', 'mindcare/client/index', null, 'MindcareClients', 1, 0, 'C', '0', '0', 'mindcare:client:list', 'user', 'admin', sysdate(), '', null, ''),
+(2007, '用户账户与终端', 2000, 7, 'clients', 'mindcare/client/index', null, 'MindcareClients', 1, 0, 'C', '0', '0', 'mindcare:client:list', 'user', 'admin', sysdate(), '', null, ''),
 (2010, '内容查询', 2002, 1, '', '', null, '', 1, 0, 'F', '0', '0', 'mindcare:content:query', '#', 'admin', sysdate(), '', null, ''),
 (2011, '内容新增', 2002, 2, '', '', null, '', 1, 0, 'F', '0', '0', 'mindcare:content:add', '#', 'admin', sysdate(), '', null, ''),
 (2012, '内容修改', 2002, 3, '', '', null, '', 1, 0, 'F', '0', '0', 'mindcare:content:edit', '#', 'admin', sysdate(), '', null, ''),

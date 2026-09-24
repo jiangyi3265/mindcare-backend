@@ -4,9 +4,9 @@ MindCare 心理健康服务项目的后端基础服务，为管理后台与用�
 
 ## 项目简介
 
-`mindcare-backend` 基于 RuoYi 前后端分离版整理为独立的 Spring Boot 多模块工程。除用户、角色、菜单、日志、JWT 鉴权等通用能力外，当前代码已实现 MindCare 三端业务接口：量表、课程和活动内容发布，用户端匿名安装身份，测评、咨询、课程进度、活动报名与留言记录同步，以及后台运营概览和状态处理。
+`mindcare-backend` 基于 RuoYi 前后端分离版整理为独立的 Spring Boot 多模块工程。除用户、角色、菜单、日志、JWT 鉴权等通用能力外，当前代码已实现 MindCare 三端业务接口：量表、课程和活动内容发布，用户端手机号与密码账号、匿名访客体验、测评/咨询/课程进度/活动报名与留言记录同步，以及后台运营概览和状态处理。
 
-用户端通过随机客户端标识与独立凭证建立同步身份；数据库只保存凭证的 BCrypt 摘要。管理接口继续使用 RuoYi 登录与权限体系，公开用户端接口只开放在 `/app/mindcare/**`，并在服务层校验客户端凭证和业务字段。
+用户端通过随机客户端标识与独立凭证建立设备身份；登录后记录归属账号，跨设备读取同一账号的数据，首次登录会合并当前设备访客记录。密码、设备凭证与一次性恢复码只保存 BCrypt 摘要。管理接口继续使用 RuoYi 登录与权限体系，公开用户端接口只开放在 `/app/mindcare/**`，并在服务层校验设备凭证、账号归属和业务字段。
 
 ## 技术栈
 
@@ -35,6 +35,8 @@ MindCare 心理健康服务项目的后端基础服务，为管理后台与用�
 mysql -u root -p mindcare < sql/ry_20250522.sql
 mysql -u root -p mindcare < sql/mindcare.sql
 ```
+
+已有 MindCare 数据库不要重新运行上面的初始化脚本。先备份数据库，再**仅执行一次** `sql/mindcare_account_migration.sql`，最后部署新版后端与两个前端。
 
 随后设置运行所需环境变量：
 
@@ -76,13 +78,14 @@ MindCare 业务代码位于 `ruoyi-system` 的 `Mindcare*` 领域、Mapper 与�
 
 ## 三端接口
 
-- 管理端：`/mindcare/dashboard`、`/mindcare/content/**`、`/mindcare/record/**`、`/mindcare/client/**`
-- 用户端：`/app/mindcare/client/register`、`/app/mindcare/bootstrap`、`/app/mindcare/records`
-- 用户端写操作需要 `X-Client-Id` 与 `X-Client-Token` 请求头；正式生产可在此基础上替换为微信登录或统一账号体系。
+- 管理端：`/mindcare/dashboard`、`/mindcare/content/**`、`/mindcare/record/**`、`/mindcare/client/**`、`/mindcare/account/list`
+- 用户端：`/app/mindcare/client/register`、`/app/mindcare/account/{register,login,recover,logout,profile}`、`/app/mindcare/bootstrap`、`/app/mindcare/records`
+- 用户端操作需要 `X-Client-Id` 与 `X-Client-Token` 请求头；登录账号的记录写入还会传入 `X-Expected-Account-Id`，防止会话失效后误写入访客记录。
+- 暂无短信服务，手机号只是账号标识，未经所有权验证。注册时显示一次恢复码；忘记密码必须同时提供手机号和恢复码，重置后原恢复码作废、其他设备的账号会话解除。不能仅凭手机号自助重置。
 
 ## 简历描述示例
 
-参与 MindCare 心理健康服务后端建设，基于 Spring Boot、Spring Security、MyBatis、MySQL 与 Redis 实现内容发布、匿名终端身份、测评/预约/学习/活动记录同步及运营处理接口，打通管理端与多端用户应用。
+参与 MindCare 心理健康服务后端建设，基于 Spring Boot、Spring Security、MyBatis、MySQL 与 Redis 实现内容发布、账号认证与恢复码找回、跨设备记录归属及运营处理接口，打通管理端与用户应用。
 
 ## 开源说明
 
