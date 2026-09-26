@@ -15,6 +15,7 @@ insert into sys_role_menu (role_id, menu_id) select 1, 2009 where not exists (se
 -- Existing four demo scales remain for backwards compatibility. The following
 -- published seed content uses public/attributed instruments; SCL-90-R and
 -- other licensed instruments must be imported only after obtaining permission.
+update mc_content set status='1' where content_type='assessment' and content_key in ('emotion','sleep','stress','social');
 insert into mc_content (content_key, content_type, title, category, summary, payload_json, status, sort_order, create_by, create_time)
 select 'who5', 'assessment', 'WHO-5幸福感指数', '幸福感', '世界卫生组织五项幸福感指数，用于了解近两周的主观幸福感。',
 json_object('id','who5','title','WHO-5幸福感指数','category','幸福感','count',5,'minutes',2,'art','meadow','hero','rest',
