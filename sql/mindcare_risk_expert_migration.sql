@@ -44,6 +44,33 @@ json_object('id','ipip-big5-20','title','IPIP五因素人格简表','category','
 where not exists (select 1 from mc_content where content_type='assessment' and content_key='ipip-big5-20');
 
 insert into mc_content (content_key, content_type, title, category, summary, payload_json, status, sort_order, create_by, create_time)
+select 'ipip-temperament-12', 'assessment', 'IPIP气质倾向简表', '气质', '基于 IPIP 公开题库的气质倾向体验测评，观察精力、社交与压力反应方式。',
+json_object('id','ipip-temperament-12','title','IPIP气质倾向简表','category','气质','count',12,'minutes',3,'art','sunrise','hero','rest',
+'description','基于 International Personality Item Pool（IPIP）公开领域题库的中文工作译本，用于自我了解气质倾向，不作为临床诊断。','sourceName','International Personality Item Pool (IPIP)','sourceUrl','https://www.ipip.ori.org/','license','Public domain item pool','version','IPIP temperament seed','instrumentType','temperament',
+'options',json_array('非常不符合','不太符合','比较符合','非常符合'),'optionValues',json_array(0,1,2,3),'scoring',json_object('type','sum','maxScore',36,'displayMax',36,'label','气质倾向分'),'crisisRules',json_object('direction','none'),
+'questions',json_array('我喜欢保持忙碌和充满活力。','我在陌生环境中也能较快适应。','我愿意主动表达自己的想法。','我做决定时通常比较果断。','我喜欢独处并从中恢复精力。','我遇到变化时会先观察再行动。','我容易因为压力而变得急躁。','我会为重要目标持续投入。','我在社交场合通常比较放松。','我更偏好安静、稳定的生活节奏。','我愿意尝试新的活动和体验。','我能在兴奋后较快恢复平静。')),
+'0', 12, 'admin', sysdate()
+where not exists (select 1 from mc_content where content_type='assessment' and content_key='ipip-temperament-12');
+
+insert into mc_content (content_key, content_type, title, category, summary, payload_json, status, sort_order, create_by, create_time)
+select 'ipip-emotional-12', 'assessment', 'IPIP情绪能力体验', '情绪智商', '基于 IPIP 公开题库的情绪觉察与共情体验测评，帮助识别表达、倾听和调节优势。',
+json_object('id','ipip-emotional-12','title','IPIP情绪能力体验','category','情绪智商','count',12,'minutes',3,'art','flowers','hero','counseling',
+'description','基于 IPIP 公开领域题库的情绪与人际相关条目中文工作译本；这不是 WLEIS 等授权工具的替代品。','sourceName','International Personality Item Pool (IPIP)','sourceUrl','https://www.ipip.ori.org/','license','Public domain item pool','version','IPIP emotionality seed','instrumentType','emotional-ability',
+'options',json_array('非常不符合','不太符合','比较符合','非常符合'),'optionValues',json_array(0,1,2,3),'scoring',json_object('type','sum','maxScore',36,'displayMax',36,'label','情绪能力体验分'),'crisisRules',json_object('direction','none'),
+'questions',json_array('我能较准确地说出自己正在经历的情绪。','我会留意身体发出的紧张或疲惫信号。','我能用合适的方式表达自己的需要。','我愿意耐心听完别人的感受。','我能理解别人话语背后的情绪。','冲突后我会思考双方真正关心的事情。','我遇到挫折时会寻找可行的调整方式。','我会给自己留出恢复情绪的时间。','我能在压力下保持基本的沟通。','我愿意为自己的情绪负责。','我会用尊重的方式提出不同意见。','朋友需要倾诉时我知道如何陪伴。')),
+'0', 13, 'admin', sysdate()
+where not exists (select 1 from mc_content where content_type='assessment' and content_key='ipip-emotional-12');
+
+insert into mc_content (content_key, content_type, title, category, summary, payload_json, status, sort_order, create_by, create_time)
+select 'onet-riasec-12', 'assessment', 'O*NET职业兴趣方向', '职业', '参考美国劳工部 O*NET Interest Profiler 的 RIASEC 兴趣框架，帮助发现更感兴趣的工作活动类型。',
+json_object('id','onet-riasec-12','title','O*NET职业兴趣方向','category','职业','count',12,'minutes',3,'art','meadow','hero','activityHero',
+'description','根据 U.S. Department of Labor O*NET Interest Profiler 的 RIASEC 框架制作的中文体验版；结果用于探索兴趣，不等同于职业资格或录用测评。','sourceName','U.S. Department of Labor O*NET Interest Profiler','sourceUrl','https://www.onetcenter.org/IP.html','license','O*NET data/public-domain reference; verify current terms','version','RIASEC experience seed','instrumentType','career-interest',
+'options',json_array('非常不喜欢','不太喜欢','比较喜欢','非常喜欢'),'optionValues',json_array(0,1,2,3),'scoring',json_object('type','sum','maxScore',36,'displayMax',36,'label','职业兴趣体验分'),'crisisRules',json_object('direction','none'),
+'questions',json_array('动手安装、修理或操作设备。','观察自然现象并记录数据。','设计海报、文字或视觉作品。','帮助他人解决学习或生活问题。','组织团队完成计划或项目。','整理资料、表格和流程。','使用工具制作或改造物品。','阅读研究报告并寻找规律。','创作故事、音乐或影像内容。','倾听并支持需要帮助的人。','说服他人接受一个方案。','按步骤处理文件和信息。')),
+'0', 14, 'admin', sysdate()
+where not exists (select 1 from mc_content where content_type='assessment' and content_key='onet-riasec-12');
+
+insert into mc_content (content_key, content_type, title, category, summary, payload_json, status, sort_order, create_by, create_time)
 select 'expert-lin', 'expert', '林老师', '心理咨询师', '擅长情绪管理、压力与睡眠议题，提供温和、结构化的初步支持。',
 json_object('id','expert-lin','title','林老师','category','心理咨询师','name','林老师','photo','builtin:avatar','credentials','国家二级心理咨询师（示例资料）','profile','擅长情绪管理、压力与睡眠议题，采用认知行为与正念练习帮助来访者建立可执行的调整计划。','methods',json_array('情绪管理','压力调节','睡眠支持'),'available',true),
 '0', 1, 'admin', sysdate()
