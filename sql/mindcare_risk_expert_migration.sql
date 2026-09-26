@@ -30,6 +30,24 @@ json_object('id','who5','title','WHO-5幸福感指数','category','幸福感','c
 where not exists (select 1 from mc_content where content_type='assessment' and content_key='who5');
 
 insert into mc_content (content_key, content_type, title, category, summary, payload_json, status, sort_order, create_by, create_time)
+select 'phq-9', 'assessment', 'PHQ-9抑郁症状筛查', '抑郁', '基于 PHQ-9 的中文工作译本，用于了解过去两周的抑郁相关症状频率；结果不是临床诊断。',
+json_object('id','phq-9','title','PHQ-9抑郁症状筛查','category','抑郁','count',9,'minutes',3,'art','flowers','hero','rest',
+'description','基于 Patient Health Questionnaire-9 的中文工作译本，用于了解过去两周的抑郁相关症状频率；结果不是临床诊断。','sourceName','National Institutes of Health (PHQ-9)','sourceUrl','https://www.nih.gov/node/19946','license','公开筛查工具；临床使用请采用正式授权/指导版本','version','PHQ-9 reference','instrumentType','depression-screening',
+'options',json_array('完全没有','有几天','一半以上的天数','几乎每天'),'optionValues',json_array(0,1,2,3),'scoring',json_object('type','sum','maxScore',27,'displayMax',27,'label','PHQ-9总分'),'crisisRules',json_object('direction','high','threshold',15,'answerIndex',8,'answerMin',1,'level','high','reason','PHQ-9分数较高或第9题出现自伤相关想法，建议尽快联系专业人员；如存在现实危险请立即寻求急救或危机干预。'),
+'questions',json_array('做事时提不起兴趣或没有乐趣。','感到情绪低落、抑郁或绝望。','入睡困难、睡不着或睡得过多。','感到疲倦或没有精力。','食欲不振或吃得过多。','觉得自己很糟，或觉得自己失败、让自己或家人失望。','做事情时难以集中注意力。','动作或说话缓慢到别人能察觉，或反过来坐立不安、动来动去。','觉得如果死了会更好，或有伤害自己的想法。')),
+'0', 11, 'admin', sysdate()
+where not exists (select 1 from mc_content where content_type='assessment' and content_key='phq-9');
+
+insert into mc_content (content_key, content_type, title, category, summary, payload_json, status, sort_order, create_by, create_time)
+select 'gad-7', 'assessment', 'GAD-7焦虑症状筛查', '焦虑', '基于 GAD-7 的中文工作译本，用于了解过去两周的焦虑相关症状频率；结果不是临床诊断。',
+json_object('id','gad-7','title','GAD-7焦虑症状筛查','category','焦虑','count',7,'minutes',3,'art','sunrise','hero','counseling',
+'description','基于 Generalized Anxiety Disorder-7 的中文工作译本，用于了解过去两周的焦虑相关症状频率；结果不是临床诊断。','sourceName','NIMH Common Data Elements (GAD-7)','sourceUrl','https://grants.nih.gov/grants/guide/notice-files/NOT-MH-20-067.html','license','公开筛查工具；临床使用请采用正式授权/指导版本','version','GAD-7 reference','instrumentType','anxiety-screening',
+'options',json_array('完全没有','有几天','一半以上的天数','几乎每天'),'optionValues',json_array(0,1,2,3),'scoring',json_object('type','sum','maxScore',21,'displayMax',21,'label','GAD-7总分'),'crisisRules',json_object('direction','high','threshold',15,'level','high','reason','GAD-7分数较高，建议尽快联系专业人员进行进一步评估和支持。'),
+'questions',json_array('感到紧张、焦虑或心神不宁。','无法停止或控制担忧。','对各种事情担忧过多。','难以放松。','坐立不安，难以安静下来。','容易烦恼或急躁。','感到好像有什么可怕的事情要发生。')),
+'0', 12, 'admin', sysdate()
+where not exists (select 1 from mc_content where content_type='assessment' and content_key='gad-7');
+
+insert into mc_content (content_key, content_type, title, category, summary, payload_json, status, sort_order, create_by, create_time)
 select 'ipip-big5-20', 'assessment', 'IPIP五因素人格简表', '人格', '基于公开题库 IPIP 的五因素人格体验测评，帮助了解开放性、尽责性、外向性、宜人性与情绪稳定性。',
 json_object('id','ipip-big5-20','title','IPIP五因素人格简表','category','人格','count',20,'minutes',4,'art','room','hero','counseling',
 'description','基于 International Personality Item Pool（IPIP）公开领域题库的中文工作译本；结果仅用于自我了解。',

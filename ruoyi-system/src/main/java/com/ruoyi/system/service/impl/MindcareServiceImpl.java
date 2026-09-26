@@ -95,7 +95,9 @@ public class MindcareServiceImpl implements IMindcareService
         {
             throw new ServiceException("记录不存在");
         }
-        if (!("consultation".equals(record.getRecordType()) || "activity".equals(record.getRecordType())
+        boolean crisisAssessment = "assessment".equals(record.getRecordType())
+            && StringUtils.isNotEmpty(record.getRiskLevel()) && !"normal".equals(record.getRiskLevel());
+        if (!(crisisAssessment || "consultation".equals(record.getRecordType()) || "activity".equals(record.getRecordType())
             || "message".equals(record.getRecordType())))
         {
             throw new ServiceException("此记录类型不支持人工处理");
@@ -475,6 +477,13 @@ public class MindcareServiceImpl implements IMindcareService
             }
             if ("assessment".equals(content.getContentType()))
             {
+                String sourceName = object.getString("sourceName");
+                String sourceUrl = object.getString("sourceUrl");
+                if (StringUtils.isEmpty(sourceName) || StringUtils.isEmpty(sourceUrl)
+                    || !sourceUrl.matches("^https://[^\\s]+$"))
+                {
+                    throw new ServiceException("量表必须填写权威来源名称和 HTTPS 来源链接");
+                }
                 JSONArray questions = object.getJSONArray("questions");
                 int count = object.getIntValue("count");
                 if (questions == null || count < 1 || count > 100 || questions.size() != count)
@@ -615,7 +624,7 @@ public class MindcareServiceImpl implements IMindcareService
         if ("assessment".equals(record.getRecordType()))
         {
             scoreAssessment(record, content);
-            record.setStatus("completed");
+            record.setStatus("normal".equals(record.getRiskLevel()) ? "completed" : "pending");
         }
         if ("course".equals(record.getRecordType()))
         {
@@ -654,6 +663,11 @@ public class MindcareServiceImpl implements IMindcareService
             return;
         }
         if ("message".equals(record.getRecordType()))
+        {
+            record.setStatus(existing.getStatus());
+        }
+        else if ("assessment".equals(record.getRecordType())
+            && StringUtils.isNotEmpty(existing.getRiskLevel()) && !"normal".equals(existing.getRiskLevel()))
         {
             record.setStatus(existing.getStatus());
         }
@@ -717,8 +731,12 @@ public class MindcareServiceImpl implements IMindcareService
             {
                 String direction = crisis.getString("direction");
                 int threshold = crisis.getIntValue("threshold");
-                boolean triggered = "low".equalsIgnoreCase(direction) ? record.getScore() <= threshold
-                    : ("high".equalsIgnoreCase(direction) && record.getScore() >= threshold);
+                int answerIndex = crisis.containsKey("answerIndex") ? crisis.getIntValue("answerIndex") : -1;
+                int answerMin = crisis.containsKey("answerMin") ? crisis.getIntValue("answerMin") : Integer.MAX_VALUE;
+                boolean answerTriggered = answerIndex >= 0 && answerIndex < answers.size()
+                    && Integer.parseInt(String.valueOf(answers.get(answerIndex))) >= answerMin;
+                boolean triggered = answerTriggered || ("low".equalsIgnoreCase(direction) ? record.getScore() <= threshold
+                    : ("high".equalsIgnoreCase(direction) && record.getScore() >= threshold));
                 if (triggered)
                 {
                     record.setRiskLevel(StringUtils.isEmpty(crisis.getString("level")) ? "high" : crisis.getString("level"));
