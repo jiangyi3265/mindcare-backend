@@ -261,7 +261,7 @@
             (select count(*) from mc_content where content_type='course' and status='0') courseCount,
             (select count(*) from mc_content where content_type='activity' and status='0') activityCount,
             (select count(*) from mc_record where record_type='assessment') assessmentRecordCount,
-            (select count(*) from mc_record where record_type='assessment' and risk_level <> 'normal') crisisRecordCount,
+            (select count(*) from mc_record where record_type='assessment' and risk_level &lt;&gt; 'normal') crisisRecordCount,
             (select count(*) from mc_record where record_type='consultation' and status in ('submitted','pending')) pendingConsultationCount,
             (select count(*) from mc_record where record_type='activity') activityEnrollmentCount
     </select>
