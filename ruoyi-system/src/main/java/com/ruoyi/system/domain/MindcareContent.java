@@ -20,7 +20,7 @@ public class MindcareContent extends BaseEntity
     private String contentKey;
 
     @NotBlank(message = "内容类型不能为空")
-    @Pattern(regexp = "^(assessment|course|activity|banner)$", message = "内容类型不正确")
+    @Pattern(regexp = "^(assessment|course|activity|banner|expert)$", message = "内容类型不正确")
     private String contentType;
 
     @NotBlank(message = "标题不能为空")

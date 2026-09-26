@@ -362,6 +362,7 @@ public class MindcareServiceImpl implements IMindcareService
         List<Object> courses = new ArrayList<>();
         List<Object> activities = new ArrayList<>();
         List<Object> banners = new ArrayList<>();
+        List<Object> experts = new ArrayList<>();
         for (MindcareContent content : contents)
         {
             Object payload = JSON.parse(content.getPayloadJson());
@@ -384,12 +385,17 @@ public class MindcareServiceImpl implements IMindcareService
             {
                 banners.add(payload);
             }
+            else if ("expert".equals(content.getContentType()))
+            {
+                experts.add(payload);
+            }
         }
         Map<String, Object> data = new HashMap<>();
         data.put("assessments", assessments);
         data.put("courses", courses);
         data.put("activities", activities);
         data.put("banners", banners);
+        data.put("experts", experts);
         data.put("records", mapper.selectOwnerRecordList(ownerKey(client)));
         data.put("account", client.getAccountId() == null ? null : accountInfo(mapper.selectAccountById(client.getAccountId())));
         return data;
@@ -550,6 +556,20 @@ public class MindcareServiceImpl implements IMindcareService
                     throw new ServiceException("轮播图必须使用内置图片或后台上传的图片");
                 }
             }
+            else if ("expert".equals(content.getContentType()))
+            {
+                if (StringUtils.isEmpty(object.getString("name")) || StringUtils.isEmpty(object.getString("profile"))
+                    || StringUtils.isEmpty(object.getString("credentials")))
+                {
+                    throw new ServiceException("专家资料需要姓名、简介和资质说明");
+                }
+                String photo = object.getString("photo");
+                if (StringUtils.isEmpty(photo) || !(photo.matches("^builtin:avatar$")
+                    || photo.matches("^/profile/upload/[A-Za-z0-9/_-]+\\.(png|jpe?g|webp)$")))
+                {
+                    throw new ServiceException("专家头像必须使用内置图片或后台上传的图片");
+                }
+            }
         }
         catch (ServiceException e)
         {
@@ -666,17 +686,45 @@ public class MindcareServiceImpl implements IMindcareService
             {
                 throw new ServiceException("测评答案数量与量表题目不一致");
             }
+            JSONArray optionValues = contentData.getJSONArray("optionValues");
+            JSONObject scoring = contentData.getJSONObject("scoring");
+            String scoringType = scoring == null ? "percent" : scoring.getString("type");
             int score = 0;
             for (Object answer : answers)
             {
                 int value = Integer.parseInt(String.valueOf(answer));
-                if (value < 0 || value > 3)
+                boolean valid = optionValues == null ? value >= 0 && value <= 3 : optionValues.contains(value);
+                if (!valid)
                 {
                     throw new ServiceException("测评答案超出范围");
                 }
                 score += value;
             }
-            record.setScore((int) Math.round((score * 100.0) / (answers.size() * 3.0)));
+            if ("sum".equalsIgnoreCase(scoringType))
+            {
+                record.setScore(score);
+            }
+            else
+            {
+                int max = scoring == null ? answers.size() * 3 : scoring.getIntValue("maxScore");
+                if (max < 1) max = answers.size() * (optionValues == null ? 3 : optionValues.getIntValue(optionValues.size() - 1));
+                record.setScore((int) Math.round((score * 100.0) / max));
+            }
+            record.setRiskLevel("normal");
+            record.setRiskReason("");
+            JSONObject crisis = contentData.getJSONObject("crisisRules");
+            if (crisis != null)
+            {
+                String direction = crisis.getString("direction");
+                int threshold = crisis.getIntValue("threshold");
+                boolean triggered = "low".equalsIgnoreCase(direction) ? record.getScore() <= threshold
+                    : ("high".equalsIgnoreCase(direction) && record.getScore() >= threshold);
+                if (triggered)
+                {
+                    record.setRiskLevel(StringUtils.isEmpty(crisis.getString("level")) ? "high" : crisis.getString("level"));
+                    record.setRiskReason(StringUtils.defaultIfEmpty(crisis.getString("reason"), "测评结果提示需要进一步关注。"));
+                }
+            }
         }
         catch (ServiceException e)
         {

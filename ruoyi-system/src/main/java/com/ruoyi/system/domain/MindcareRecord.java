@@ -44,6 +44,9 @@ public class MindcareRecord extends BaseEntity
     private Integer score;
     private BigDecimal progress;
     private String dataJson;
+    /** Server-derived safety signal for assessment records. */
+    private String riskLevel;
+    private String riskReason;
 
     public Long getRecordId() { return recordId; }
     public void setRecordId(Long recordId) { this.recordId = recordId; }
@@ -71,4 +74,8 @@ public class MindcareRecord extends BaseEntity
     public void setProgress(BigDecimal progress) { this.progress = progress; }
     public String getDataJson() { return dataJson; }
     public void setDataJson(String dataJson) { this.dataJson = dataJson; }
+    public String getRiskLevel() { return riskLevel; }
+    public void setRiskLevel(String riskLevel) { this.riskLevel = riskLevel; }
+    public String getRiskReason() { return riskReason; }
+    public void setRiskReason(String riskReason) { this.riskReason = riskReason; }
 }

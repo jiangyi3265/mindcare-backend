@@ -32,6 +32,8 @@
         <result property="score" column="score"/>
         <result property="progress" column="progress"/>
         <result property="dataJson" column="data_json"/>
+        <result property="riskLevel" column="risk_level"/>
+        <result property="riskReason" column="risk_reason"/>
         <result property="createTime" column="create_time"/>
         <result property="updateBy" column="update_by"/>
         <result property="updateTime" column="update_time"/>
@@ -61,7 +63,7 @@
     </resultMap>
 
     <sql id="contentColumns">content_id, content_key, content_type, title, category, summary, cast(payload_json as char) payload_json, status, sort_order, create_by, create_time, update_by, update_time</sql>
-    <sql id="recordColumns">record_id, record_key, client_id, owner_key, record_type, content_key, title, contact_name, contact_phone, status, score, progress, cast(data_json as char) data_json, create_time, update_by, update_time</sql>
+    <sql id="recordColumns">record_id, record_key, client_id, owner_key, record_type, content_key, title, contact_name, contact_phone, status, score, progress, cast(data_json as char) data_json, risk_level, risk_reason, create_time, update_by, update_time</sql>
 
     <select id="selectContentList" parameterType="MindcareContent" resultMap="ContentResult">
         select <include refid="contentColumns"/> from mc_content
@@ -130,10 +132,10 @@
     </select>
 
     <insert id="upsertRecord" parameterType="MindcareRecord" useGeneratedKeys="true" keyProperty="recordId">
-        insert into mc_record (record_key, client_id, owner_key, record_type, content_key, title, contact_name, contact_phone, status, score, progress, data_json, create_time, update_time)
-        values (#{recordKey}, #{clientId}, #{ownerKey}, #{recordType}, #{contentKey}, #{title}, #{contactName}, #{contactPhone}, #{status}, #{score}, #{progress}, #{dataJson}, sysdate(), sysdate())
+        insert into mc_record (record_key, client_id, owner_key, record_type, content_key, title, contact_name, contact_phone, status, score, progress, data_json, risk_level, risk_reason, create_time, update_time)
+        values (#{recordKey}, #{clientId}, #{ownerKey}, #{recordType}, #{contentKey}, #{title}, #{contactName}, #{contactPhone}, #{status}, #{score}, #{progress}, #{dataJson}, #{riskLevel}, #{riskReason}, sysdate(), sysdate())
         on duplicate key update record_id=last_insert_id(record_id), title=values(title), contact_name=values(contact_name),
-        contact_phone=values(contact_phone), status=values(status), score=values(score), progress=values(progress), data_json=values(data_json), update_time=sysdate()
+        contact_phone=values(contact_phone), status=values(status), score=values(score), progress=values(progress), data_json=values(data_json), risk_level=values(risk_level), risk_reason=values(risk_reason), update_time=sysdate()
     </insert>
 
     <select id="countActiveContentRecord" resultType="int">
@@ -259,6 +261,7 @@
             (select count(*) from mc_content where content_type='course' and status='0') courseCount,
             (select count(*) from mc_content where content_type='activity' and status='0') activityCount,
             (select count(*) from mc_record where record_type='assessment') assessmentRecordCount,
+            (select count(*) from mc_record where record_type='assessment' and risk_level <> 'normal') crisisRecordCount,
             (select count(*) from mc_record where record_type='consultation' and status in ('submitted','pending')) pendingConsultationCount,
             (select count(*) from mc_record where record_type='activity') activityEnrollmentCount
     </select>
