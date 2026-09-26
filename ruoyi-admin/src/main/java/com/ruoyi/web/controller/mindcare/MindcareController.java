@@ -101,7 +101,8 @@ public class MindcareController extends BaseController
     @PutMapping("/record/{recordId}/status")
     public AjaxResult updateRecordStatus(@PathVariable Long recordId, @RequestBody Map<String, String> body)
     {
-        return toAjax(service.updateRecordStatus(recordId, body.get("status"), getUsername()));
+        return toAjax(service.updateRecordStatus(recordId, body.get("status"), body.get("handlingMethod"),
+            body.get("handlingNote"), getUsername()));
     }
 
     @PreAuthorize("@ss.hasPermi('mindcare:client:list')")

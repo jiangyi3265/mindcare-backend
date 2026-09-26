@@ -28,12 +28,18 @@
         <result property="title" column="title"/>
         <result property="contactName" column="contact_name"/>
         <result property="contactPhone" column="contact_phone"/>
+        <result property="profileNickname" column="profile_nickname"/>
+        <result property="profilePhone" column="profile_phone"/>
         <result property="status" column="status"/>
         <result property="score" column="score"/>
+        <result property="isExploratory" column="is_exploratory"/>
         <result property="progress" column="progress"/>
         <result property="dataJson" column="data_json"/>
         <result property="riskLevel" column="risk_level"/>
         <result property="riskReason" column="risk_reason"/>
+        <result property="handlingMethod" column="handling_method"/>
+        <result property="handlingNote" column="handling_note"/>
+        <result property="handlingTime" column="handling_time"/>
         <result property="createTime" column="create_time"/>
         <result property="updateBy" column="update_by"/>
         <result property="updateTime" column="update_time"/>
@@ -63,7 +69,20 @@
     </resultMap>
 
     <sql id="contentColumns">content_id, content_key, content_type, title, category, summary, cast(payload_json as char) payload_json, status, sort_order, create_by, create_time, update_by, update_time</sql>
-    <sql id="recordColumns">record_id, record_key, client_id, owner_key, record_type, content_key, title, contact_name, contact_phone, status, score, progress, cast(data_json as char) data_json, risk_level, risk_reason, create_time, update_by, update_time</sql>
+    <!-- Public bootstrap queries must never return administrator follow-up notes. -->
+    <sql id="recordColumns">record_id, record_key, client_id, owner_key, record_type, content_key, title, contact_name, contact_phone, status, score, progress, cast(data_json as char) data_json, risk_level, risk_reason, create_time, update_time</sql>
+    <!-- Nicknames and login/profile phones are separate from contact fields because
+         neither a nickname nor a phone without SMS verification proves identity. -->
+    <sql id="adminRecordColumns">r.record_id, r.record_key, r.client_id, r.owner_key, r.record_type, r.content_key, r.title,
+        r.contact_name, r.contact_phone,
+        case when r.owner_key like 'a:%' then nullif(nullif(nullif(a.nickname, ''), '小林'), '心友')
+             else nullif(nullif(nullif(c.nickname, ''), '小林'), '心友') end profile_nickname,
+        case when r.owner_key like 'a:%' then nullif(a.phone, '')
+             else nullif(c.phone, '') end profile_phone,
+        r.status, r.score,
+        case when json_unquote(json_extract(s.payload_json, '$.isExploratory')) = 'true' then 1 else 0 end is_exploratory,
+        r.progress, cast(r.data_json as char) data_json, r.risk_level, r.risk_reason,
+        r.handling_method, r.handling_note, r.handling_time, r.create_time, r.update_by, r.update_time</sql>
 
     <select id="selectContentList" parameterType="MindcareContent" resultMap="ContentResult">
         select <include refid="contentColumns"/> from mc_content
@@ -108,15 +127,25 @@
     </delete>
 
     <select id="selectRecordList" parameterType="MindcareRecord" resultMap="RecordResult">
-        select <include refid="recordColumns"/> from mc_record
+        select <include refid="adminRecordColumns"/>
+        from mc_record r
+        left join mc_client c on c.client_id = r.client_id
+        left join mc_account a on a.account_id = case when r.owner_key like 'a:%'
+            then cast(substring(r.owner_key, 3) as unsigned) else null end
+        left join mc_content s on s.content_type = 'assessment' and r.record_type = 'assessment'
+            and s.content_key = r.content_key
         <where>
-            <if test="recordType != null and recordType != ''">and record_type = #{recordType}</if>
-            <if test="clientId != null and clientId != ''">and client_id = #{clientId}</if>
-            <if test="title != null and title != ''">and title like concat('%', #{title}, '%')</if>
-            <if test="contactPhone != null and contactPhone != ''">and contact_phone like concat('%', #{contactPhone}, '%')</if>
-            <if test="status != null and status != ''">and status = #{status}</if>
+            <if test="recordType != null and recordType != ''">and r.record_type = #{recordType}</if>
+            <if test="clientId != null and clientId != ''">and r.client_id = #{clientId}</if>
+            <if test="title != null and title != ''">and r.title like concat('%', #{title}, '%')</if>
+            <if test="contactPhone != null and contactPhone != ''">
+                and (r.contact_phone like concat('%', #{contactPhone}, '%')
+                    or (r.owner_key like 'a:%' and a.phone like concat('%', #{contactPhone}, '%'))
+                    or (r.owner_key like 'c:%' and c.phone like concat('%', #{contactPhone}, '%')))
+            </if>
+            <if test="status != null and status != ''">and r.status = #{status}</if>
         </where>
-        order by update_time desc, record_id desc
+        order by r.update_time desc, r.record_id desc
     </select>
 
     <select id="selectOwnerRecordList" parameterType="String" resultMap="RecordResult">
@@ -124,18 +153,38 @@
     </select>
 
     <select id="selectRecordById" parameterType="Long" resultMap="RecordResult">
-        select <include refid="recordColumns"/> from mc_record where record_id = #{recordId}
+        select <include refid="adminRecordColumns"/>
+        from mc_record r
+        left join mc_client c on c.client_id = r.client_id
+        left join mc_account a on a.account_id = case when r.owner_key like 'a:%'
+            then cast(substring(r.owner_key, 3) as unsigned) else null end
+        left join mc_content s on s.content_type = 'assessment' and r.record_type = 'assessment'
+            and s.content_key = r.content_key
+        where r.record_id = #{recordId}
     </select>
 
     <select id="selectOwnerRecordByKey" resultMap="RecordResult">
         select <include refid="recordColumns"/> from mc_record where owner_key=#{ownerKey} and record_key=#{recordKey} limit 1
     </select>
 
+    <select id="selectClientRecordByKey" resultMap="RecordResult">
+        select <include refid="recordColumns"/> from mc_record where client_id=#{clientId} and record_key=#{recordKey} limit 1
+    </select>
+
     <insert id="upsertRecord" parameterType="MindcareRecord" useGeneratedKeys="true" keyProperty="recordId">
         insert into mc_record (record_key, client_id, owner_key, record_type, content_key, title, contact_name, contact_phone, status, score, progress, data_json, risk_level, risk_reason, create_time, update_time)
         values (#{recordKey}, #{clientId}, #{ownerKey}, #{recordType}, #{contentKey}, #{title}, #{contactName}, #{contactPhone}, #{status}, #{score}, #{progress}, #{dataJson}, #{riskLevel}, #{riskReason}, sysdate(), sysdate())
-        on duplicate key update record_id=last_insert_id(record_id), title=values(title), contact_name=values(contact_name),
-        contact_phone=values(contact_phone), status=values(status), score=values(score), progress=values(progress), data_json=values(data_json), risk_level=values(risk_level), risk_reason=values(risk_reason), update_time=sysdate()
+        on duplicate key update record_id=last_insert_id(record_id),
+        title=if(record_type='assessment', title, values(title)),
+        contact_name=if(record_type='assessment', contact_name, values(contact_name)),
+        contact_phone=if(record_type='assessment', contact_phone, values(contact_phone)),
+        status=if(record_type='assessment', status, values(status)),
+        score=if(record_type='assessment', score, values(score)),
+        progress=if(record_type='assessment', progress, values(progress)),
+        data_json=if(record_type='assessment', data_json, values(data_json)),
+        risk_level=if(record_type='assessment', risk_level, values(risk_level)),
+        risk_reason=if(record_type='assessment', risk_reason, values(risk_reason)),
+        update_time=if(record_type='assessment', update_time, sysdate())
     </insert>
 
     <select id="countActiveContentRecord" resultType="int">
@@ -164,7 +213,13 @@
     </select>
 
     <update id="updateRecordStatus">
-        update mc_record set status=#{status}, update_by=#{updateBy}, update_time=sysdate() where record_id=#{recordId}
+        update mc_record
+        set status=#{status},
+            handling_method=case when #{handlingMethod} is null then handling_method else #{handlingMethod} end,
+            handling_note=case when #{handlingMethod} is null then handling_note else #{handlingNote} end,
+            handling_time=case when #{handlingMethod} is null then handling_time else sysdate() end,
+            update_by=#{updateBy}, update_time=sysdate()
+        where record_id=#{recordId}
     </update>
 
     <delete id="deleteOwnerRecords" parameterType="String">delete from mc_record where owner_key=#{ownerKey}</delete>
@@ -268,6 +323,13 @@
     </select>
 
     <select id="selectRecentRecords" resultMap="RecordResult">
-        select <include refid="recordColumns"/> from mc_record order by update_time desc, record_id desc limit 8
+        select <include refid="adminRecordColumns"/>
+        from mc_record r
+        left join mc_client c on c.client_id = r.client_id
+        left join mc_account a on a.account_id = case when r.owner_key like 'a:%'
+            then cast(substring(r.owner_key, 3) as unsigned) else null end
+        left join mc_content s on s.content_type = 'assessment' and r.record_type = 'assessment'
+            and s.content_key = r.content_key
+        order by r.update_time desc, r.record_id desc limit 8
     </select>
 </mapper>

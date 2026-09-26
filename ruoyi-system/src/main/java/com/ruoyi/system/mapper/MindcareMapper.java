@@ -23,6 +23,7 @@ public interface MindcareMapper
     List<MindcareRecord> selectOwnerRecordList(String ownerKey);
     MindcareRecord selectRecordById(Long recordId);
     MindcareRecord selectOwnerRecordByKey(@Param("ownerKey") String ownerKey, @Param("recordKey") String recordKey);
+    MindcareRecord selectClientRecordByKey(@Param("clientId") String clientId, @Param("recordKey") String recordKey);
     int upsertRecord(MindcareRecord record);
     int countActiveContentRecord(@Param("ownerKey") String ownerKey, @Param("recordType") String recordType,
         @Param("contentKey") String contentKey, @Param("recordKey") String recordKey);
@@ -30,7 +31,9 @@ public interface MindcareMapper
         @Param("appointmentDate") String appointmentDate, @Param("appointmentTime") String appointmentTime);
     int selectActivityEnrollmentCount(@Param("contentKey") String contentKey, @Param("recordKey") String recordKey);
     int selectActivityEnrollmentCountExcludingOwner(@Param("contentKey") String contentKey, @Param("ownerKey") String ownerKey);
-    int updateRecordStatus(@Param("recordId") Long recordId, @Param("status") String status, @Param("updateBy") String updateBy);
+    int updateRecordStatus(@Param("recordId") Long recordId, @Param("status") String status,
+        @Param("handlingMethod") String handlingMethod, @Param("handlingNote") String handlingNote,
+        @Param("updateBy") String updateBy);
     int deleteOwnerRecords(String ownerKey);
 
     List<MindcareClient> selectClientList(MindcareClient client);

@@ -4,7 +4,9 @@ import java.math.BigDecimal;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
+import java.util.Date;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ruoyi.common.core.domain.BaseEntity;
 
 /**
@@ -40,13 +42,31 @@ public class MindcareRecord extends BaseEntity
     @Size(max = 30, message = "联系电话不能超过30个字符")
     private String contactPhone;
 
+    /** Profile nickname is not an identity-verified legal name. Admin views only. */
+    private String profileNickname;
+    /** Login/profile phone is not SMS-verified. Admin views only. */
+    private String profilePhone;
+
     private String status;
     private Integer score;
+    /** Whether the linked assessment is an exploratory, non-standard-scored questionnaire (admin views only). */
+    private Boolean isExploratory;
     private BigDecimal progress;
     private String dataJson;
     /** Server-derived safety signal for assessment records. */
     private String riskLevel;
     private String riskReason;
+
+    /** Back-office follow-up method selected when a record is processed. */
+    @Size(max = 30, message = "处理方式不能超过30个字符")
+    private String handlingMethod;
+
+    /** Back-office follow-up notes, kept separate from the client payload. */
+    @Size(max = 500, message = "处理备注不能超过500个字符")
+    private String handlingNote;
+
+    /** Time at which a follow-up method was recorded. */
+    private Date handlingTime;
 
     public Long getRecordId() { return recordId; }
     public void setRecordId(Long recordId) { this.recordId = recordId; }
@@ -66,10 +86,17 @@ public class MindcareRecord extends BaseEntity
     public void setContactName(String contactName) { this.contactName = contactName; }
     public String getContactPhone() { return contactPhone; }
     public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
+    public String getProfileNickname() { return profileNickname; }
+    public void setProfileNickname(String profileNickname) { this.profileNickname = profileNickname; }
+    public String getProfilePhone() { return profilePhone; }
+    public void setProfilePhone(String profilePhone) { this.profilePhone = profilePhone; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Integer getScore() { return score; }
     public void setScore(Integer score) { this.score = score; }
+    @JsonProperty(value = "isExploratory", access = JsonProperty.Access.READ_ONLY)
+    public Boolean getIsExploratory() { return isExploratory; }
+    public void setIsExploratory(Boolean isExploratory) { this.isExploratory = isExploratory; }
     public BigDecimal getProgress() { return progress; }
     public void setProgress(BigDecimal progress) { this.progress = progress; }
     public String getDataJson() { return dataJson; }
@@ -78,4 +105,10 @@ public class MindcareRecord extends BaseEntity
     public void setRiskLevel(String riskLevel) { this.riskLevel = riskLevel; }
     public String getRiskReason() { return riskReason; }
     public void setRiskReason(String riskReason) { this.riskReason = riskReason; }
+    public String getHandlingMethod() { return handlingMethod; }
+    public void setHandlingMethod(String handlingMethod) { this.handlingMethod = handlingMethod; }
+    public String getHandlingNote() { return handlingNote; }
+    public void setHandlingNote(String handlingNote) { this.handlingNote = handlingNote; }
+    public Date getHandlingTime() { return handlingTime; }
+    public void setHandlingTime(Date handlingTime) { this.handlingTime = handlingTime; }
 }

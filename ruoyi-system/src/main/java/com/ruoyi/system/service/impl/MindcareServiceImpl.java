@@ -88,7 +88,7 @@ public class MindcareServiceImpl implements IMindcareService
     }
 
     @Override
-    public int updateRecordStatus(Long recordId, String status, String updateBy)
+    public int updateRecordStatus(Long recordId, String status, String handlingMethod, String handlingNote, String updateBy)
     {
         MindcareRecord record = mapper.selectRecordById(recordId);
         if (record == null)
@@ -102,12 +102,33 @@ public class MindcareServiceImpl implements IMindcareService
         {
             throw new ServiceException("此记录类型不支持人工处理");
         }
+        if (crisisAssessment && !("pending".equals(status) || "completed".equals(status)))
+        {
+            throw new ServiceException("预警记录只能设为待处理或已完成");
+        }
         if (!("pending".equals(status) || "confirmed".equals(status)
             || "canceled".equals(status) || "completed".equals(status)))
         {
             throw new ServiceException("记录状态不正确");
         }
-        return mapper.updateRecordStatus(recordId, status, updateBy);
+        handlingMethod = StringUtils.isEmpty(handlingMethod) ? null : handlingMethod.trim();
+        handlingNote = StringUtils.isEmpty(handlingNote) ? null : handlingNote.trim();
+        if (StringUtils.isNotEmpty(handlingMethod)
+            && !("phone".equals(handlingMethod) || "message".equals(handlingMethod)
+                || "in_person".equals(handlingMethod) || "referral".equals(handlingMethod)
+                || "other".equals(handlingMethod)))
+        {
+            throw new ServiceException("处理方式不正确");
+        }
+        if ("completed".equals(status) && (StringUtils.isEmpty(handlingMethod) || StringUtils.isEmpty(handlingNote)))
+        {
+            throw new ServiceException("完成处理时必须填写处理方式和处理备注");
+        }
+        if (StringUtils.isNotEmpty(handlingNote) && handlingNote.length() > 500)
+        {
+            throw new ServiceException("处理备注不能超过500个字符");
+        }
+        return mapper.updateRecordStatus(recordId, status, handlingMethod, handlingNote, updateBy);
     }
 
     @Override
@@ -419,6 +440,11 @@ public class MindcareServiceImpl implements IMindcareService
         }
         record.setClientId(clientId);
         record.setOwnerKey(ownerKey(client));
+        MindcareRecord clientRecord = mapper.selectClientRecordByKey(clientId, record.getRecordKey());
+        if (clientRecord != null && !record.getOwnerKey().equals(clientRecord.getOwnerKey()))
+        {
+            throw new ServiceException("记录标识已被其他账号使用");
+        }
         if ("activity".equals(record.getRecordType()) && StringUtils.isNotEmpty(record.getContentKey()))
         {
             // Serialize signups for one activity before checking its remaining capacity.
@@ -428,6 +454,12 @@ public class MindcareServiceImpl implements IMindcareService
         if (existing != null && !record.getRecordType().equals(existing.getRecordType()))
         {
             throw new ServiceException("记录标识已被其他业务类型使用");
+        }
+        if (existing != null && "assessment".equals(record.getRecordType()))
+        {
+            // Retrying an assessment is idempotent. The original answers, score,
+            // risk signal and administrator follow-up must never be overwritten.
+            return existing;
         }
         boolean cancelRequested = "canceled".equals(record.getStatus());
         normalizeRecord(record);
@@ -497,6 +529,7 @@ public class MindcareServiceImpl implements IMindcareService
                         throw new ServiceException("量表题目不能为空");
                     }
                 }
+                reverseItemFlags(object.getJSONObject("scoring"), count);
                 if (object.getIntValue("minutes") < 1)
                 {
                     throw new ServiceException("量表预计时长必须大于 0");
@@ -703,16 +736,30 @@ public class MindcareServiceImpl implements IMindcareService
             JSONArray optionValues = contentData.getJSONArray("optionValues");
             JSONObject scoring = contentData.getJSONObject("scoring");
             String scoringType = scoring == null ? "percent" : scoring.getString("type");
-            int score = 0;
-            for (Object answer : answers)
+            boolean[] reversed = reverseItemFlags(scoring, answers.size());
+            int minOption = 0;
+            int maxOption = 3;
+            if (optionValues != null && !optionValues.isEmpty())
             {
-                int value = Integer.parseInt(String.valueOf(answer));
+                minOption = Integer.MAX_VALUE;
+                maxOption = Integer.MIN_VALUE;
+                for (Object option : optionValues)
+                {
+                    int value = Integer.parseInt(String.valueOf(option));
+                    minOption = Math.min(minOption, value);
+                    maxOption = Math.max(maxOption, value);
+                }
+            }
+            int score = 0;
+            for (int i = 0; i < answers.size(); i++)
+            {
+                int value = Integer.parseInt(String.valueOf(answers.get(i)));
                 boolean valid = optionValues == null ? value >= 0 && value <= 3 : optionValues.contains(value);
                 if (!valid)
                 {
                     throw new ServiceException("测评答案超出范围");
                 }
-                score += value;
+                score += reversed[i] ? minOption + maxOption - value : value;
             }
             if ("sum".equalsIgnoreCase(scoringType))
             {
@@ -752,6 +799,36 @@ public class MindcareServiceImpl implements IMindcareService
         {
             throw new ServiceException("测评答案格式不正确");
         }
+    }
+
+    /** reverseItems uses zero-based question indices from the published scale config. */
+    private boolean[] reverseItemFlags(JSONObject scoring, int count)
+    {
+        boolean[] reversed = new boolean[count];
+        JSONArray items = scoring == null ? null : scoring.getJSONArray("reverseItems");
+        if (items == null) return reversed;
+        for (Object item : items)
+        {
+            if (!(item instanceof Number))
+            {
+                throw new ServiceException("反向计分题号必须是数字");
+            }
+            int index;
+            try
+            {
+                index = Integer.parseInt(String.valueOf(item));
+            }
+            catch (NumberFormatException e)
+            {
+                throw new ServiceException("反向计分题号必须是整数");
+            }
+            if (index < 0 || index >= count || reversed[index])
+            {
+                throw new ServiceException("反向计分题号不正确");
+            }
+            reversed[index] = true;
+        }
+        return reversed;
     }
 
     private void validateConsultation(MindcareRecord record)

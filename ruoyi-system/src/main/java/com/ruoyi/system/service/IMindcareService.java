@@ -17,7 +17,7 @@ public interface IMindcareService
 
     List<MindcareRecord> selectRecordList(MindcareRecord record);
     MindcareRecord selectRecordById(Long recordId);
-    int updateRecordStatus(Long recordId, String status, String updateBy);
+    int updateRecordStatus(Long recordId, String status, String handlingMethod, String handlingNote, String updateBy);
     List<MindcareClient> selectClientList(MindcareClient client);
     List<MindcareAccount> selectAccountList(MindcareAccount account);
     Map<String, Object> dashboard();
